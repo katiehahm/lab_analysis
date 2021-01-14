@@ -1,7 +1,13 @@
 %% 6/17/20
-load('data/data_01-10-2021_15-07-26') %'data/data_09-21-2020_15-29.mat'
-loc_names = {'A1', 'A5', 'E1'};
 
+% 1/13/21: go to Dropbox - analysis/data, "pwd" into command window to get
+% this path
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\data\';
+load([data_root_katie, 'data_01-10-2021_15-07-26'])
+% load('data/data_01-10-2021_15-07-26') %'data/data_09-21-2020_15-29.mat'
+loc_names = {'A1', 'A5', 'E1'};
+% Ben test
+Ben = 100;
 Fs = 12800;
 plotData(datas, times, loc_names, 'raw data ');
 plotFreqSpectrum(datas, Fs, loc_names);
