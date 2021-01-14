@@ -7,7 +7,7 @@ plotData(datas, times, loc_names, 'raw data ');
 plotFreqSpectrum(datas, Fs, loc_names);
 filt_datas = lpf_data(datas);
 plotData(filt_datas, times, loc_names, 'filtered data ');
-
+%test github
 %% 6/19/20
 [p_idx, p_val] = findPeaks(filt_datas, times, Fs, loc_names);
 
