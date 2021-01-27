@@ -1,4 +1,0 @@
-function [outputArg1,outputArg2] = combine_data_multiplie(data, sensor_c)
-
-end
-

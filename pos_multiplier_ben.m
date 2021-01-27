@@ -1,7 +1,6 @@
 function [sens_1_multiplier, sens_2_multiplier, sens_3_multiplier, sens_4_multiplier] = pos_multiplier_ben(data, sensor_code)
     [sens_1_res, sens_2_res, sens_3_res, sens_4_res, len] = data_organizer(data, sensor_code);
     
-    
     sens_1_multiplier = NaN;
     sens_2_multiplier = NaN;
     sens_3_multiplier = NaN;
@@ -79,7 +78,7 @@ function [sens_1_multiplier, sens_2_multiplier, sens_3_multiplier, sens_4_multip
             dist_to_1 = 85;
             dist_to_2 = 154;
             dist_to_3 = 138;
-            dist_to_4 = 50;
+            dist_to_4 = 50;60
         end
         if pos_num == 11
             dist_to_1 = 110;

@@ -166,30 +166,95 @@ avg_pos_11_sens_4 = mean(peaks_4(6:10,:),1);
 %   28" from sensor 4
 
 %% Testing data_organizer
-data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').datas;
+data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-54-42').peak_mag;
 [sens_1_res, sens_2_res, sens_3_res, sens_4_res, len] = data_organizer(data, 11100000000);
-
 %% Testing multiplier
-data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').datas;
-[sens_1_multiplier, sens_2_multiplier, sens_3_multiplier, sens_4_multiplier] = pos_multiplier_ben(data, 00011100000);
+data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-54-42').peak_mag;
+[sens_1_multiplier, sens_2_multiplier, sens_3_multiplier, sens_4_multiplier] = pos_multiplier_ben(data, 11100000000);
 
 %% Testing combination
 % data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').datas;
 % sensor_code = 11100000000;
 % [sensor_1, sensor_2, sensor_3, sensor_4] = combine_data_multiplier_ben(data, sensor_code);\
 
-data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').datas;
-sensor_code = 00011100000;
+data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-54-42').peak_mag;
+sensor_code = 11100000000;
 [sensor_1, sensor_2, sensor_3, sensor_4] = combine_data_multiplier_ben(data, sensor_code);
 
 %% Testing multiple paths
-data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').datas;
-data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').datas;
-datas = {data1 data2};
-codes = [11100000000 00011100000];
+data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').peak_mag;
+data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').peak_mag;
+data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-54-42').peak_mag;
+data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-57-34').peak_mag;
+
+% datas = {data1 data2};
+datas = {data1, data2, data3, data4};
+codes = [11100000000 11100000000 00011100000 00011100000];
+[sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(datas, codes);
+
+%% 31.5" Black
+data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').peak_mag;
+data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').peak_mag;
+data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-19-54').peak_mag;
+data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-21-17').peak_mag;
+
+datas = {data1, data2, data3, data4};
+codes = [11100000000 00011100000 00000011100 00000000011];
 [sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(datas, codes);
 
 
+%% 17" Black
+data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-28-34').peak_mag;
+data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-29-59').peak_mag;
+data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-31-27').peak_mag;
+data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-32-32').peak_mag;
+
+datas = {data1, data2, data3, data4};
+codes = [11100000000 00011100000 00000011100 00000000011];
+[sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(datas, codes);
+
+%% 31.5" White 
+data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-36-09').peak_mag;
+data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-38-22').peak_mag;
+data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-40-13').peak_mag;
+data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-41-42').peak_mag;
+
+datas = {data1, data2, data3, data4};
+codes = [11100000000 00011100000 00000011100 00000000011];
+[sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(datas, codes);
 
 
+%% Time delay 
+% data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-16-21').peak_idx;
+% data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-18-11').peak_idx;
+% data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-19-54').peak_idx;
+% data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_12-10-2020_12-21-17').peak_idx;
+% data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-28-34').peak_idx;
+% data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-29-59').peak_idx;
+% data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-31-27').peak_idx;
+% data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-32-32').peak_idx;
+% data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-36-09').peak_idx;
+% data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-38-22').peak_idx;
+% data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-40-13').peak_idx;
+% data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-05-2021_13-41-42').peak_idx;
+data1 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-54-42').peak_idx;
+data2 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_11-57-34').peak_idx;
+data3 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_12-11-46').peak_idx;
+data4 = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\data\data_01-15-2021_12-13-40').peak_idx;
+together = vertcat(data1, data2, data3, data4);
+tot = together(:, 1) - together(:, 2);
+dist1 = 60*ones(5, 1);
+dist2 = 38*ones(5, 1);
+dist3 = 7*ones(5, 1);
+dist4 = -24*ones(5, 1);
+dist5 = -54*ones(5, 1);
+dist6 = -81*ones(5, 1);
+dist7 = -96*ones(5, 1);
+dist8 = -66*ones(5, 1);
+dist9 = -28*ones(5, 1);
+dist10 = -69*ones(5, 1);
+dist11= -59*ones(5, 1);
+dists = vertcat(dist1, dist2, dist3, dist4, dist5, dist6, dist7, dist8, dist9, dist10, dist11);
+final = horzcat(tot, dists);
 
+coeffs = polyfit(final(:,2), final(:,1), 1)
