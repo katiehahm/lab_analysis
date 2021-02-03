@@ -49,8 +49,8 @@ function [sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(d
     scatter(sensor_3(:,2), sensor_3(:,1))
     improvePlot_ben
     grid on
-    coeffs = polyfit(sensor_3(:,2), sensor_3(:,1), 2);
-    xFit = linspace(min(sensor_3(:,2)), max(sensor_3(:,2)), 1000);
+    coeffs = polyfit(sensor_3(:,2), sensor_1(:,1), 2);
+    xFit = linspace(min(sensor_1(:,2)), max(sensor_1(:,2)), 1000);
     yFit = polyval(coeffs , xFit);
     hold on;
     plot(xFit, yFit, 'r-', 'LineWidth', 2);
@@ -62,8 +62,8 @@ function [sensor_1, sensor_2, sensor_3, sensor_4] = combine_multiple_paths_ben(d
     scatter(sensor_4(:,2), sensor_4(:,1))
     improvePlot_ben
     grid on
-    coeffs = polyfit(sensor_4(:,2), sensor_4(:,1), 2);
-    xFit = linspace(min(sensor_4(:,2)), max(sensor_4(:,2)), 1000);
+    coeffs = polyfit(sensor_1(:,2), sensor_1(:,1), 2);
+    xFit = linspace(min(sensor_1(:,2)), max(sensor_1(:,2)), 1000);
     yFit = polyval(coeffs , xFit);
     hold on;
     plot(xFit, yFit, 'r-', 'LineWidth', 2);
