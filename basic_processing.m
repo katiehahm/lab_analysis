@@ -220,3 +220,79 @@ impactN = 6; % ADJUST number of expected impacts in data
 
 [onset_idx, peak_idx, peak_val] = TDOA2(clean_data,impactN,Fs,loc_names);
 [mag_diff, diff] = triangulate_timing(transpose(onset_idx), transpose(peak_val), loc_names,Fs);
+
+
+%% plotting histogram for embc 2/9/21 from differences_limps.mat
+
+clear all
+load('data/differences_limps.mat')
+
+
+color1 = [0.7 0.7 1];
+color3 = [1 0.5 0.5];
+color2 = [88/255 162/255 115/255];
+
+differences1 = nolimp_sensor1;
+% bin = round(1+3.22*log(numel(differences1)));
+bin = 44;
+figure;
+hold on
+h1 = histfit(differences1,bin,'kernel');
+h1(1).FaceColor = color1;
+h1(1).EdgeColor = color1;
+h1(2).Color = color1;
+% h1(1).BarWidth = 0.8;
+alpha(0.7)
+mu1=mean(differences1);
+sigma1=std(differences1);
+limits1 = linspace(0,20,100);
+% plot(mu1,limits1,'c-')
+% plot(mu1-sigma1,limits1,'c-')
+% plot(mu1+sigma1,limits1,'c-')
+% line([mu1, mu1], ylim, 'Color', 'b', 'LineWidth', 0.5); 
+% line([mu1 + sigma1, mu1 + sigma1], ylim, 'Color', 'b', 'LineWidth', 0.5); 
+% line([mu1 - sigma1, mu1 - sigma1], ylim, 'Color', 'b', 'LineWidth', 0.5); 
+
+
+differences1 = slight_sensor1;
+% bin = round(1+3.22*log(numel(differences1)));
+bin = 40;
+h2 = histfit(differences1,bin,'kernel');
+h2(1).FaceColor = color2;
+h2(1).EdgeColor = color2;
+h2(2).Color = color2;
+alpha(0.7)
+% h2(1).BarWidth = 0.8;
+% mu1=mean(differences1);
+% sigma1=std(differences1);
+% line([mu1, mu1], [0 6], 'Color', 'g', 'LineWidth', 0.5); 
+% line([mu1 + sigma1, mu1 + sigma1], [0 6], 'Color', 'green', 'LineWidth', 0.5); 
+% line([mu1 - sigma1, mu1 - sigma1], [0 6], 'Color', 'green', 'LineWidth', 0.5); 
+
+differences1 = severe_sensor1;
+% bin = round(1+3.22*log(numel(differences1)));
+bin = 64;
+h3 = histfit(differences1,bin,'kernel');
+h3(1).FaceColor = color3;
+h3(1).EdgeColor = color3;
+h3(2).Color = color3;
+alpha(0.3)
+% mu1=mean(differences1);
+% sigma1=std(differences1);
+% line([mu1, mu1], [0 6], 'Color', 'r', 'LineWidth', 0.5); 
+% line([mu1 + sigma1, mu1 + sigma1], [0 6], 'Color', 'r', 'LineWidth', 0.5); 
+% line([mu1 - sigma1, mu1 - sigma1], [0 6], 'Color', 'r', 'LineWidth', 0.5); 
+
+legend([h1(2),h2(2),h3(2)],{'No Limp','Slight Limp','Severe Limp'})
+legend boxoff
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 16)
+title('Stride Time')
+xlabel('Stride Time')
+ylabel('Number of Steps')
+xlim([0.35 1.1])
+
+%% bimodality coef 2/10/21
+[BF, BC, S, K] = bimodalitycoeff(nolimp_sensor1)
+[BF, BC, S, K] = bimodalitycoeff(slight_sensor1)
+[BF, BC, S, K] = bimodalitycoeff(severe_sensor1)
