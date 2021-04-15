@@ -1,7 +1,7 @@
 function [peaks1, peaks2, peaks3, idx1, idx2, idx3] = TDOA4new(data)
-    min_height = 0.005;                 % default min height - 0.012
+    min_height = 0.01;                 % default min height - 0.012
     min_distance = 7500;                % default min distance between peaks - 6500
-    min_prominence = 0.005;                 % default min peak prominence - 0.003
+    min_prominence = 0.025;                 % default min peak prominence - 0.003
     [peaks1, idx1, width1, prominence1] = findpeaks(data(:,1),... 
                                                 'MinPeakHeight', min_height,... 
                                                 'MinPeakDistance', min_distance,... 
