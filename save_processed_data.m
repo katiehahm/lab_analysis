@@ -3,6 +3,12 @@ function [] = save_processed_data(filename, n, sn, m)
 % to run on all data files to save features into the file
 % to be then processed (to not duplicate feature finding)
 
+% data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\data\';
+% load([data_root_katie, filename])
+% raw_data = datas;
+% loc_names = {'FP', 'AP', 'AT', 'FT'};
+% Fs = 12800;
+% filt_data = lpf_data(raw_data);
 % clean_data = clean_envelope(filt_data,Fs); % took abs val out 1/24/21
 
 % changeable parameters
