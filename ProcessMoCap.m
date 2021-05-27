@@ -1,3 +1,19 @@
+% Created by: Ben (bendwyer@mit.edu) 5/21/21
+
+% Inputs: 
+%   motion_data - data loaded from motion capture system 
+
+% Purpose: 
+%   This code takes the motion capture data and transforms it into a 
+%   more usable form. It will replace NaN values and also calculate where
+%   each impact occurs. The (x,y) coordinates will be stored and distance
+%   to each sensor will be calculated. Will also produce a visual plot
+%   of the path the suer walked.
+
+% Output:
+%   joined_steps - array that stores the (X, y, idx) of each impact
+%   dst - array that stores the distance to each sensor of each impact
+
 function [joined_steps, dst] = ProcessMoCap(motion_data)
     lx = table2array(motion_data(:,9));
     ly = table2array(motion_data(:,11));

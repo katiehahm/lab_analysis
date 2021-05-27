@@ -1,3 +1,20 @@
+% Created by: Ben (bendwyer@mit.edu) 5/21/21
+
+% Inputs: 
+%   motion_data - data loaded from motion capture system 
+%   sensor_data - data loaded from sensor system (.datas)
+
+% Purpose: 
+%   This code takes the motion capture data and transforms it into a 
+%   more usable form. Additionally, it identifies the occurance of the
+%   stomp in both the motion data and sensor data and crops accordingly.
+
+% Output:
+%   motion_data_crop - orignal motion data cropped
+%   sensor_data_crop - original sensor data cropped
+%   sensor_start - index at which stomp occurs in sensor data
+%   motion_start - index at which stomp occurs in motion data
+
 function [motion_data_crop,sensor_data_crop, sensor_start, motion_start] = TimeShift(motion_data,sensor_data)
     start_mag = 0;
     start_idx = 0;
@@ -5,17 +22,12 @@ function [motion_data_crop,sensor_data_crop, sensor_start, motion_start] = TimeS
     lx = table2array(motion_data(:,9));
     ly = table2array(motion_data(:,11));
     lz = table2array(motion_data(:,10));
-    lt = table2array(motion_data(:,2));
 
     rx = table2array(motion_data(:,18));
     ry = table2array(motion_data(:,20));
     rz = table2array(motion_data(:,19));
-    rt = table2array(motion_data(:,2));
 
-    x = vertcat(lx, rx);
-    y = vertcat(ly, ry);
     z = vertcat(lz, rz);
-    t = vertcat(lt, rt);
 
     for i=1:length(z)
         if isnan(z(i))
@@ -27,8 +39,8 @@ function [motion_data_crop,sensor_data_crop, sensor_start, motion_start] = TimeS
         end
     end
 
-    [peaks_l, idx_l] = findpeaks(-lz,'MinPeakDistance', 200);
-    [peaks_r, idx_r] = findpeaks(-rz,'MinPeakDistance', 200);
+    [~, idx_l] = findpeaks(-lz,'MinPeakDistance', 200);
+    [~, idx_r] = findpeaks(-rz,'MinPeakDistance', 200);
     step_l = zeros(length(idx_l),3);
     step_r = zeros(length(idx_r),3);
     

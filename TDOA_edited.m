@@ -1,14 +1,21 @@
+% Created by: Ben (bendwyer@mit.edu) 5/21/21
+
+% This is a slightly modified version of TDOA2.
+% All inputs and outputs should be the same, it has simply
+% been adjusted to handle input from all 4 sensors.
+
+% Does not always pick up the right peaks, needs a little work.
+
 function [onset_idx, peak_idx, peak_val] = TDOA_edited(clean_data,impactN)
     d = clean_data;
     sn = length(d(1,:)); % number of sensors
-    d_length = length(d(:,1)); % number of datapoints
     onset_idx = zeros(sn,impactN);
     peak_idx = zeros(sn,impactN);
     peak_val = zeros(sn,impactN);
 
     % ADJUSTABLE THRESHOLD VALUES
     onset2pk = 500; % max num of datapoints between onset and peak
-    onset_thresh = 0.002; % Volts. threshold where noise becomes impact
+    onset_thresh = 1.002; % Volts. threshold where noise becomes impact
     impactWidth = 7500; % impact lasts N datapoints
 
     % find max recursively

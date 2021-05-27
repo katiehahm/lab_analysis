@@ -251,7 +251,23 @@ for r = 1:length(joined_steps)
         end
     end
     for c = 1:4
-        final(r, c) = sen_
+        final(r, c) = sen_merged(r, c) - first_idx;
     end
-    
+    for c = 5:8
+        final(r, c) = sen_merged(r, c) - high_mag;
+    end
+    for c = 9:12
+        final(r,c) = dst(r,c-8);
+    end
 end
+
+%% Combining MoCap
+
+% sensor_data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\ImmersionFloorSensors\data_04-20-2021_15-54-17.mat').datas;
+% motion_data = readtable('C:\Users\bpdwy\Dropbox (MIT)\Analysis\MotionCapture\04-20-2021-03-53-51.csv');
+% [final] = Prep_MoCap(motion_data, sensor_data);
+
+
+% sensor_data = load('C:\Users\bpdwy\Dropbox (MIT)\Analysis\ImmersionFloorSensors\data_05-09-2021_15-08-29.mat').datas;
+% motion_data = readtable('C:\Users\bpdwy\Dropbox (MIT)\Analysis\MotionCapture\05-09-2021_15-08-29.csv');
+% [final] = Prep_MoCap(motion_data, sensor_data);
