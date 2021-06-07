@@ -1,4 +1,4 @@
-%% load data 5/26/21
+% load data 5/26/21
 clear all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\';
 
@@ -8,131 +8,208 @@ load([data_root_katie, 'ImmersionFloorSensors\data_', datestr])
 T = readtable([data_root_katie, 'MotionCapture\', datestr]);
 
 % clip accel data from square triggers in fsr
-fsrT = Time(1,:);
-fsrD = Data;
+Time = Time(1,:);
 [clipped_time, clipped_data] = clip_to_fsr(times, datas);
 
 % convert and clip stomp mocap csv
 [mocapT, mocapL, mocapR] = convertMocap(T);
 
-%% todo****** extract footfall locations from these arrays
+% todo****** extract footfall locations from these arrays
 
-%% clip stomp fsr and pcb 
+% clip stomp fsr and pcb 
+[clip_stomp_data,clip_stomp_time,clip_fsrD,clip_fsrT] = clip_stomp(clipped_time,clipped_data,Time,Data);
 
-[maxv,~] = max(clipped_data(0:50000,2));
-datalen = length(clipped_data);
-buffer = 0.5;
-for i = datalen
-   if clipped_data(i, 2) > maxv + buffer % always stomp next to S2
-       break
-   end
+
+% clip end of data
+[pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL] = clip_end(clip_stomp_data,clip_stomp_time,clip_fsrT,clip_fsrD,mocapT,mocapR,mocapL);
+
+% clip 1 sec from start of data to filter out 
+[pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL] = clip_onesec(pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL);
+
+% map of fsr sensor location to array number
+keySet = {'Rballi','Rtoe','Rheel','Rballo','Ltoe','Lheel','Lballi','Lballo'};
+valueSet = [1 2 3 4 5 6 7 8];
+Mfsr = containers.Map(keySet, valueSet);
+% overall plot for visual check
+plot_3data(pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL,Mfsr)
+
+% clean and filter pcb data
+Fs = 12800;
+filt_pcbD = lpf_data(pcbD);
+filt_pcbD = noise_to_zero(filt_pcbD,Fs);
+
+% Final workable data arrays:
+% fsrD, fsrT, filt_pcbD, pcbT, mocapT, mocapR, mocapL
+
+
+%% finding footfalls based on fsr heel data 6/7/21
+
+figure;
+plot(fsrD(:,Mfsr('Rheel')))
+findpeaks(fsrD(:,Mfsr('Rheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5)
+[pksR,locsR,widthsR,~] = findpeaks(fsrD(:,Mfsr('Rheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5); % 4th element is prominence
+
+width_thresh = 400;
+for i = 1:length(widthsR) % filter out wide peaks
+    if widthsR(i) > width_thresh
+        pksR(i) = 0;
+        locsR(i) = 0;
+    end
 end
+pksR = nonzeros(pksR);
+locsR = nonzeros(locsR);
 
-window = 
-arrival_idx(i,j) = aic_pick(window, 'to_peak')+min_idx;
+figure;
+plot(fsrD(:,Mfsr('Lheel')))
+findpeaks(fsrD(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5)
+[pksL,locsL,widthsL,~] = findpeaks(fsrD(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5);
 
+for i = 1:length(widthsL) % filter out wide peaks
+    if widthsL(i) > width_thresh
+        pksL(i) = 0;
+        locsL(i) = 0;
+    end
+end
+pksL = nonzeros(pksL);
+locsL = nonzeros(locsL);
 
-%% clip end of data
+impacts = [locsR(1),pksR(1);
+        locsL(1),pksL(1)];
+for i = 2:length(pksR)
+    btw_pk = fsrD(locsR(i-1):locsR(i),Mfsr('Rheel'));
+    if any(btw_pk < 1)
+        impacts(end+1,:) = [locsR(i),pksR(i)];
+    end
+end
+for i = 2:length(pksL)
+    btw_pk = fsrD(locsL(i-1):locsL(i),Mfsr('Lheel'));
+    if any(btw_pk < 1)
+        impacts(end+1,:) = [locsL(i),pksL(i)];
+    end
+end
+impacts = sortrows(impacts);
 
-% [minv,~] = min(clipped_data(end-100:end,:));
-[maxv,~] = max(clipped_data(end-100:end,:));
+% visually check
+figure; hold on
+plot(fsrD(:,Mfsr('Lheel')))
+plot(fsrD(:,Mfsr('Rheel')))
+plot(impacts(:,1),impacts(:,2), 'ko','MarkerSize',10)
 
-datalen = length(clipped_data);
-for i = 1:datalen
-    if any(clipped_data(datalen+1-i,:) > maxv)
-        break
+%% extract pcb segments and mocap locations from fsr heel impacts
+
+impactT = fsrT(impacts(:,1));
+num_sensors = 4;
+
+% pcb extract
+window_width = Fs*0.4; % shaking lasts < 0.2s
+offset = 0.2; % start window 1/4 of window behind the fsr start
+arrival_idx = zeros(length(impactT),num_sensors);
+peak_idx = zeros(length(impactT),num_sensors);
+peak_mag = zeros(length(impactT),num_sensors);
+for i = 1:length(impactT)
+    pcbi = findTindex(impactT(i),pcbT);
+    starti = pcbi - offset*window_width;
+    for j = 1:num_sensors
+        endi = min(starti+window_width, length(filt_pcbD(:,1)));
+        window = filt_pcbD(starti:endi,j);
+        if any(window > 0)
+            arrival_idx(i,j) = aic_pick(window, 'to_peak')+starti;
+            [mag,idx] = max(abs(window));
+            peak_mag(i,j) = mag;
+            peak_idx(i,j) = idx + starti;
+        else
+            arrival_idx(i,j) = NaN;
+            peak_idx(i,j) = NaN;
+            peak_mag(i,j) = NaN;
+        end
     end
 end
 
-buffer = 100;
-lastindex = datalen+1-i + buffer;
-
-clipped_data = clipped_data(0:lastindex,:);
-clipped_time = clipped_time(0:lastindex);
-
-lastindexfsr = findTindex(clipped_time(end),fsrT);
-fsrT = fsrT(0:lastindexfsr);
-fsrD = fsrD(:,0:lastindexfsr);
-
-lastindexmc = findTindex(clipped_time(end),mocapT);
-mocapL = mocapL(0:lastindexmc,:);
-mocapR = mocapR(0:lastindexmc,:);
-mocapT = mocapT(0:lastindexmc,:);
-
-%% process mocap csv
-
-mocapT = T(:,2);
-T = T(:,3:end);
-
-Lheel = 0;
-Lmid = 1; 
-Ltoe = 2;
-Rheel = 3;
-Rmid = 4;
-Rtoe = 5;
-S1 = 6;
-S2 = 7;
-S3 = 8;
-S4 = 9;
-
-S1loc = [T(1,S1*3 +1),T(1,S1*3 + 2),T(1,S1*3 + 3)];
-S2loc = [T(1,S2*3 +1),T(1,S2*3 + 2),T(1,S2*3 + 3)];
-S3loc = [T(1,S3*3 +1),T(1,S3*3 + 2),T(1,S3*3 + 3)];
-S4loc = [T(1,S4*3 +1),T(1,S4*3 + 2),T(1,S4*3 + 3)];
-
-%% sync FSR and pcb
-invtrig = -1 .* datas(:,5);
-edges = [0,0,0,0];
-for n = 1:4
-    [~,i] = max(invtrig);
-    edges(n) = i;
-    invtrig(i - 10000:i+10000) = -5;
+% mocap extract
+footstep_time = 0.3; % length of time foot is reliably still
+coordinatesR = ones(length(impactT),2);
+coordinatesL = ones(length(impactT),2);
+whichfoot = zeros(length(impactT),1);
+extracted_pts_R = ones(length(impactT),1);
+extracted_pts_L = ones(length(impactT),1);
+rightft = 1;
+leftft = 2;
+avg_seg = 10; % take the average of 10 datapoints
+for i = 1:length(impactT)
+    starti = findTindex(impactT(i),mocapT);
+    endi = findTindex(impactT(i)+footstep_time,mocapT);
+    if isempty(endi)
+        endi = length(mocapT);
+    end
+    segL = mocapL(starti:endi,:);
+    segR = mocapR(starti:endi,:);
+    if std(segL(:,1)) > std(segR(:,1)) % left seg has more variation
+        % right leg is still
+        prev_avg = mean(segR(1:1+avg_seg,1)); % loop until x-value is steady
+        for j = avg_seg:(length(segR)-avg_seg)
+            curr_avg = mean(segR(j:j+avg_seg,1));
+            if abs(prev_avg-curr_avg) < 50 % movement is < 50 mm
+                coordinatesR(i,1) = segR(j,1);
+                coordinatesR(i,2) = segR(j,3); % store x,z coordinates
+                whichfoot(i,1) = rightft;
+                extracted_pts_R(i,1) = starti + j;
+                break;
+            end
+            j = j+avg_seg;
+        end
+    else
+        % left leg is still
+        prev_avg = mean(segL(1:1+avg_seg,1)); % loop until x-value is steady
+        for j = avg_seg:(length(segL)-avg_seg)
+            curr_avg = mean(segL(j:j+avg_seg,1));
+            if abs(prev_avg-curr_avg) < 50 % movement is < 50 mm
+                coordinatesL(i,1) = segL(j,1);
+                coordinatesL(i,2) = segL(j,3); % store x,z coordinates
+                whichfoot(i,1) = leftft;
+                extracted_pts_L(i,1) = starti + j;
+                break;
+            end
+            j = j+avg_seg;
+        end
+    end
 end
-edges = sort(edges);
-startI = edges(1);
-endI = edges(3);
 
-accel = datas(startI:endI,1:4);
-startT = times(startI);
-endT = times(endI);
-accelT = linspace(0,endT-startT,endI-startI+1);
+% visualize
+peak_idx(isnan(peak_idx)) = 1;
+peak_mag(isnan(peak_mag)) = 1;
+arrival_idx(isnan(arrival_idx)) = 1;
+figure;
+for i=1:num_sensors
+    subplot(4,1,i)
+    plot(pcbT,filt_pcbD(:,i))
+    hold on
+    plot(pcbT(peak_idx(:,i)),peak_mag(:,i),'r.','MarkerSize',10)
+    plot(pcbT(arrival_idx(:,i)),0,'k.','MarkerSize',10)
+end
 
-% accel and accelT are synced to FSR (0 time are lined up)
-
-%% process FSR
-% double check later!
-% FSR1: A outside ball, B toe C heel D inside ball
-% FSR2: A toe, B heel, C inside ball, D outside ball
-
-% figure;
-% hold on
-% for i = 1:4
-%     subplot(4,1,i)
-%     plot(Data(i+4,:))
-% end
-
-fsrT = Time(1,:);
-
-Rballi  = Data(1,:);
-Rtoe    = Data(2,:);
-Rheel   = Data(3,:);
-Rballo  = Data(4,:);
-
-Ltoe    = Data(5,:);
-Lheel   = Data(6,:);
-Lballi  = Data(7,:);
-Lballo  = Data(8,:);
-
-figure
+figure;
+subplot(2,1,1)
+plot(mocapT,mocapR(:,1))
 hold on
-for i = 1:8
-    subplot(8,1,i)
-    plot(Data(i,10000:15000))
-end
+plot(mocapT(extracted_pts_R), coordinatesR(:,1),'r.','MarkerSize',10)
+subplot(2,1,2)
+plot(mocapT,mocapR(:,3))
+hold on
+plot(mocapT(extracted_pts_R), coordinatesR(:,2),'r.','MarkerSize',10)
+title('Right foot mocap')
 
+figure;
+subplot(2,1,1)
+plot(mocapT,mocapL(:,1))
+hold on
+plot(mocapT(extracted_pts_L), coordinatesL(:,1))
+subplot(2,1,2)
+plot(mocapT,mocapL(:,3))
+hold on
+plot(extracted_pts_L, coordinatesL(:,2))
+title('Left foot mocap')
 
-fsr = [Rheel;Rballi;Rballo;Rtoe;Lheel;Lballi;Lballo;Ltoe];
-
+%% probably trash everything under this: was used to make a small plot for mini group
 %% walking segments extract
 
 wWidth = 1000; % number of datapoints in a typical impact window width
