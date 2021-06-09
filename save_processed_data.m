@@ -68,11 +68,7 @@ for i = 1:sn
     plot(peak_idx(:,i),peak_mag(:,i),'ro')
 end
 
-<<<<<<< Updated upstream
 save([data_root_katie, filename], 'raw_data','loc_names','Fs','filt_data','impactN','arrival_idx','peak_idx','peak_mag', 'prominence', 'echo', 'mass', '-append')
-=======
-% save([data_root_katie, filename], 'raw_data','loc_names','Fs','filt_data','impactN','arrival_idx','peak_idx','peak_mag','mass', '-append')
->>>>>>> Stashed changes
    
 end
 
