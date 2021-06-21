@@ -14,10 +14,18 @@ for i = 1:length(mocapT)
     Rzarr = [A(i,Mmocap('Rhz')), A(i,Mmocap('Rbz'))];
     
     Lx = mean(Lxarr, 'omitnan');
-    Ly = A(i,Mmocap('Lhy'));
+    if isnan(A(i,Mmocap('Lhy')))
+        Ly = A(i,Mmocap('Lby'));
+    else
+        Ly = A(i,Mmocap('Lhy'));
+    end
     Lz = mean(Lzarr, 'omitnan');
     Rx = mean(Rxarr, 'omitnan');
-    Ry = A(i,Mmocap('Rhy'));
+    if isnan(A(i,Mmocap('Rhy')))
+        Ry = A(i,Mmocap('Rby'));
+    else
+        Ry = A(i,Mmocap('Rhy'));
+    end
     Rz = mean(Rzarr, 'omitnan');
     Lloc(i,:) = [Lx,Ly,Lz];
     Rloc(i,:) = [Rx,Ry,Rz];

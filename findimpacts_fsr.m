@@ -22,7 +22,7 @@ locsR = nonzeros(locsR);
 
 figure;
 plot(fsrD(:,Mfsr('Lheel')))
-title('Left heel')11
+title('Left heel')
 findpeaks(fsrD(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5)
 [pksL,locsL,widthsL,~] = findpeaks(fsrD(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5);
 

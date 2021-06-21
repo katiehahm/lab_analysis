@@ -45,7 +45,6 @@ for i = 1:length(impactT)
                 coordinatesL(i,1) = segL(j,1);
                 coordinatesL(i,2) = segL(j,3); % store x,z coordinates
                 coordinates(i,:) = [segL(j,1),segL(j,3)];
-                whichfoot(i,1) = leftft;
                 extracted_pts_L(i,1) = starti + j;
                 break;
             end
@@ -90,6 +89,8 @@ if visualize
     plot(mocapT(extracted_pts_L), mocapL(extracted_pts_L,2),'r.','MarkerSize',10)
     title('Left foot y')
 end
+
+size(coordinates)
 
 end
 

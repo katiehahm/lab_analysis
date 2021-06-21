@@ -64,7 +64,7 @@ else
 end
 return
 function [a] = aicval(x)
-if ~isempty(x)
+if ~isempty(x) && length(x) > 1
     n = length(x);
     for i=1:n-1;
         %compute variance in first part

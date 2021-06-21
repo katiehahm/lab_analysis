@@ -2,21 +2,26 @@
 clear all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\';
 
+% ################# change ########################
 % datestr = '05-09-2021_15-08-29'; % Rn 110
-datestr = '06-04-2021_13-47-54'; % Rn 116
-load([data_root_katie, 'DelsysFSRs\Run_number_116_', datestr])
+% datestr = '06-04-2021_13-47-54'; % Rn 116
+datestr = '06-10-2021_14-17-29'; % Rn 131-134
+load([data_root_katie, 'DelsysFSRs\Run_number_134_', datestr]) % ### change
 load([data_root_katie, 'ImmersionFloorSensors\data_', datestr])
 T = readtable([data_root_katie, 'MotionCapture\', datestr]);
 
 num_sensors = 4;
 Fs = 12800;
 
+% ############### change #######################
 % map of fsr sensor location to array number
 keySet = {'Rballi','Rtoe','Rheel','Rballo','Ltoe','Lheel','Lballi','Lballo'};
 % valueSet = [1 2 3 4 5 6 7 8]; % 05-09-2021_15-08-29
-valueSet = [2 3 1 2 7 5 6 6]; % 06-04-2021_13-47-54
+% valueSet = [2 3 1 2 7 5 6 6]; % 06-04-2021_13-47-54
+valueSet = [5 6 7 8 1 2 3 4]; % 06-10-2021_
 Mfsr = containers.Map(keySet, valueSet);
 
+% ################# change ####################
 % map of mocap sensor marker to location
 % b = ball, t = toe, h = heel
 % y is up/down
@@ -24,7 +29,9 @@ keySet = {'Lbx','Lby','Lbz','Lhx','Lhy','Lhz','Ltx','Lty','Ltz','Rbx','Rby','Rbz
 % 06-04-2021_13-47-54
 % valueSet = [3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20];
 % 05-09-2021_15-08-29
-valueSet = [6 7 8 3 4 5 9 10 11 15 16 17 12 13 14 18 19 20];
+%valueSet = [6 7 8 3 4 5 9 10 11 15 16 17 12 13 14 18 19 20];
+% 06-10-2021_13-23-05
+valueSet = [6 7 8 3 4 5 6 7 8 12 13 14 9 10 11 12 13 14];
 Mmocap = containers.Map(keySet, valueSet);
 
 % clip accel data from square triggers in fsr
@@ -39,14 +46,15 @@ Time = Time(1,:);
 
 
 % clip end of data
-[pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL] = clip_end(clip_stomp_data,clip_stomp_time,clip_fsrT,clip_fsrD,mocapT,mocapR,mocapL);
+[pre_pcbD,pre_pcbT,pre_fsrT,pre_fsrD,pre_mocapT,pre_mocapR,pre_mocapL] = clip_end(clip_stomp_data,clip_stomp_time,clip_fsrT,clip_fsrD,mocapT,mocapR,mocapL);
 
 % visualize how much to clip
-figure; plot(pcbT,pcbD(:,2))
+figure; plot(pre_pcbT,pre_pcbD(:,2))
 
 %% clip 1 sec from start of data to filter out 
-timeseg = 8.2;
-[pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL] = clip_tosettle(timeseg,pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL);
+% ############# change ###################
+timeseg = 14; % find time right before first real impact. -1.
+[pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL] = clip_tosettle(timeseg,pre_pcbD,pre_pcbT,pre_fsrT,pre_fsrD,pre_mocapT,pre_mocapR,pre_mocapL);
 
 
 % overall plot for visual check
@@ -68,7 +76,7 @@ filt_pcbD = noise_to_zero(filt_pcbD,Fs);
 [arrival_idx, peak_idx, peak_mag, impactT, impacts] = findimpacts_pcb(impactT,impacts,pcbT,filt_pcbD,Fs,num_sensors,true);
 
 % mocap extract
-[coordinates, whichfoot] = findimpacts_mocap(impactT,mocapT,mocapR,mocapL,true);
+[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impactT,mocapT,mocapR,mocapL,true);
 
 % final imapct results:
 % coordinates, arrival_idx, peak_idx, peak_mag
@@ -87,9 +95,58 @@ plot(pcbT(arrival_idx_nonan),0,'k.','MarkerSize',15)
 title('PCB final extraction arrival times')
 
 %% 6/9/21 for saving data
-filename = append("ProcessedData\", datestr);
-save([data_root_katie, filename, 'DataT', pcbT, filt_pcbD, fsrT, fsrD, mocapT, mocapR, mocapL)
+filename = [data_root_katie, 'ProcessedData\', datestr];
+save(filename, 'DataT', 'pcbT', 'filt_pcbD', 'fsrT', 'fsrD', 'mocapT', 'mocapR', 'mocapL')
 disp(append("Saved as ", filename))
+
+%% 6/15/21 form one csv file for python code
+
+clear all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\ProcessedData\';
+
+datestr = '06-04-2021_13-47-54';
+load([data_root_katie, datestr])
+DataT(any(isnan(DataT),2),:) = [];
+final_data = DataT;
+
+datestr = '06-10-2021_13-23-05';
+load([data_root_katie, datestr])
+DataT(any(isnan(DataT),2),:) = [];
+final_data = [final_data;DataT];
+
+datestr = '06-10-2021_13-38-16';
+load([data_root_katie, datestr])
+DataT(any(isnan(DataT),2),:) = [];
+final_data = [final_data;DataT];
+
+datestr = '06-10-2021_14-00-15';
+load([data_root_katie, datestr])
+DataT(any(isnan(DataT),2),:) = [];
+final_data = [final_data;DataT];
+
+datestr = '06-10-2021_14-17-29';
+load([data_root_katie, datestr])
+DataT(any(isnan(DataT),2),:) = [];
+final_data = [final_data;DataT];
+
+writematrix(final_data,[data_root_katie,'06-04_06-10_finaldata_nonan.csv'])
+
+%% 6/18/21 fixing data csv to put relative index values instead of absolute
+
+clear all
+T = readtable('06-04_06-10_finaldata_nonan.csv');
+data = table2array(T);
+arrival_idx = data(:,1:4);
+peak_idx = data(:,5:8);
+nrows = length(arrival_idx);
+new_arrival = zeros(nrows,4);
+new_peak = zeros(nrows,4);
+for i = 1:nrows
+    firstidx = min(arrival_idx(i,:));
+    new_arrival(i,:) = arrival_idx(i,:) - firstidx;
+    new_peak(i,:) = peak_idx(i,:) - arrival_idx(i,:);
+end
+DataT = [arrival_idx, peak_idx, peak_mag, coordinates];
 
 %% probably trash everything under this: was used to make a small plot for mini group
 %% walking segments extract
