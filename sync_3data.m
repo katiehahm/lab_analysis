@@ -99,57 +99,7 @@ filename = [data_root_katie, 'ProcessedData\', datestr];
 save(filename, 'DataT', 'pcbT', 'filt_pcbD', 'fsrT', 'fsrD', 'mocapT', 'mocapR', 'mocapL')
 disp(append("Saved as ", filename))
 
-%% 6/15/21 form one csv file for python code
 
-clear all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\ProcessedData\';
-
-datestr = '06-04-2021_13-47-54';
-load([data_root_katie, datestr])
-DataT(any(isnan(DataT),2),:) = [];
-final_data = DataT;
-
-datestr = '06-10-2021_13-23-05';
-load([data_root_katie, datestr])
-DataT(any(isnan(DataT),2),:) = [];
-final_data = [final_data;DataT];
-
-datestr = '06-10-2021_13-38-16';
-load([data_root_katie, datestr])
-DataT(any(isnan(DataT),2),:) = [];
-final_data = [final_data;DataT];
-
-datestr = '06-10-2021_14-00-15';
-load([data_root_katie, datestr])
-DataT(any(isnan(DataT),2),:) = [];
-final_data = [final_data;DataT];
-
-datestr = '06-10-2021_14-17-29';
-load([data_root_katie, datestr])
-DataT(any(isnan(DataT),2),:) = [];
-final_data = [final_data;DataT];
-
-writematrix(final_data,[data_root_katie,'06-04_06-10_finaldata_nonan.csv'])
-
-%% 6/18/21 fixing data csv to put relative index values instead of absolute
-
-clear all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\ProcessedData\';
-T = readtable([data_root_katie,'06-04_06-10_finaldata_nonan.csv']);
-data = table2array(T);
-arrival_idx = data(:,1:4);
-peak_idx = data(:,5:8);
-nrows = length(arrival_idx);
-new_arrival = zeros(nrows,4);
-new_peak = zeros(nrows,4);
-for i = 1:nrows
-    firstidx = min(arrival_idx(i,:));
-    new_arrival(i,:) = arrival_idx(i,:) - firstidx;
-    new_peak(i,:) = peak_idx(i,:) - arrival_idx(i,:);
-end
-
-new_final_data = [new_arrival, new_peak, data(:,9:end)];
-writematrix(new_final_data,[data_root_katie,'06-04_06-10_edited_finaldata_nonan.csv'])
 
 %% probably trash everything under this: was used to make a small plot for mini group
 %% walking segments extract

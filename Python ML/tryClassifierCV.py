@@ -31,6 +31,7 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
         mse = mean_squared_error(yTest, yPredict)
         print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
 
+        print(regr_multi.get_params())
         # print("The best estimator across ALL searched params:", regr_multi.best_estimator_)
         # print("The best score across ALL searched params:", regr_multi.best_score_)
         # print("The best parameters across ALL searched params:", regr_multi.best_params_)

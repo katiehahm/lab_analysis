@@ -40,9 +40,9 @@ from tryClassifierCV import tryClassifierCV
 # data = pd.read_csv('06-04_06-10_finaldata.csv',header=None)
 data = pd.read_csv('06-04_06-10_edited_finaldata_nonan.csv',header=None)
 # data
-data_labels = data.iloc[0]
+# data_labels = data.iloc[0]
 # take out the first row
-data = data.drop(data.index[0])
+# data = data.drop(data.index[0])
 data = data.apply(pd.to_numeric, errors='coerce')
 # convert from pandas dataframe to numpy array
 dataM = pd.DataFrame(data).to_numpy()
@@ -71,7 +71,7 @@ param_dist = {
 	'learning_rate' : 0.1
 }
 
-# GBR(inputs, outputsM, param_dist, k_fold)
+GBR(inputs, outputsM, param_dist, k_fold)
 
 # GBR, 20 iter
 model_g = GradientBoostingRegressor(n_estimators=50)
@@ -93,4 +93,4 @@ param_distributions_r = {
 
 # print(model_g.get_params().keys())
 
-tryClassifierCV(inputs, outputsM, model_g, param_distributions_g, 20, 'GBR', k_fold)
+# tryClassifierCV(inputs, outputsM, model_g, param_distributions_g, 20, 'GBR', k_fold)

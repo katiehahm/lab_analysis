@@ -3,6 +3,8 @@ from sklearn.multioutput import MultiOutputRegressor
 import numpy as np
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+import math
+
 
 def GBR(inp, out, param_dist, k_fold):
     yTestAll = [[1,1]]
@@ -19,7 +21,7 @@ def GBR(inp, out, param_dist, k_fold):
         regr_multi = MultiOutputRegressor(model_gbr)
         regr_multi.fit(xTrain, yTrain)
 
-        print(regr_multi.get_params())
+        # print(regr_multi.get_params())
         
         yPredict = regr_multi.predict(xTest)
         
@@ -34,13 +36,13 @@ def GBR(inp, out, param_dist, k_fold):
     yTestAll = np.delete(yTestAll,0,0)
     yPredictAll = np.delete(yPredictAll,0,0)
 
-    mse_all = mean_squared_error(yTestAll, yPredictAll)
-    print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
+    rmse_all = mean_squared_error(yTestAll, yPredictAll,squared=False)
+    print("The RMSE on all tests: {:.4f}".format(rmse_all))
 
-    mse_x = mean_squared_error(yTestAll[:,0:1], yPredictAll[:,0:1])
-    mse_z = mean_squared_error(yTestAll[:,1:], yPredictAll[:,1:])
-    print("The RMSE on all tests X-dir: {:.4f}".format(np.sqrt(mse_x)))
-    print("The RMSE on all tests Z-dir: {:.4f}".format(np.sqrt(mse_z)))
+    rmse_x = mean_squared_error(yTestAll[:,0:1], yPredictAll[:,0:1],squared=False)
+    rmse_z = mean_squared_error(yTestAll[:,1:], yPredictAll[:,1:],squared=False)
+    print("The RMSE on all tests X-dir: {:.4f}".format(rmse_x))
+    print("The RMSE on all tests Z-dir: {:.4f}".format(rmse_z))
 
     fig = plt.figure(figsize=(6,6))
     plt.plot(yPredictAll[:,0:1],yTestAll[:,0:1],'o')
