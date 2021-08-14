@@ -1,13 +1,17 @@
+# to run GBR with specific parameters (instead of using tryClassifierCV)
 from sklearn.multioutput import MultiOutputRegressor
 import numpy as np
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import GradientBoostingRegressor
 
-def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold):
+def GBRtest(inp, out, k_fold):
     yTestAll = [[1,1]]
     yPredictAll = [[1,1]]
-    
+
+    plt.rcParams.update({'font.size': 18})
+
     for k, (train, test) in enumerate(k_fold.split(inp, out)):
         print("Running kfold")
         xTrain = inp[train]
@@ -15,23 +19,20 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
         xTest = inp[test]
         yTest = out[test]
 
-        
-        model_cv = RandomizedSearchCV(model, param_distributions=param_distributions, n_iter=n_it, verbose=0)
-        # print(model_cv.get_params())
-        regr_multi = MultiOutputRegressor(model_cv)
+        param_dist = {'n_estimators' : 50, 'max_depth' : 3, 'min_samples_split' : 2, 'learning_rate' : 0.1}
+
+        model_gbr = GradientBoostingRegressor()
+        model_gbr.set_params(**param_dist)
+        regr_multi = MultiOutputRegressor(model_gbr)
         regr_multi.fit(xTrain, yTrain)
-        
+
         yPredict = regr_multi.predict(xTest)
       
         # saving values to plot
         yTestAll = np.append(yTestAll,yTest,axis=0)
         yPredictAll = np.append(yPredictAll,yPredict,axis=0)
 
-        # finding accuracy for each location
-        mse = mean_squared_error(yTest, yPredict)
-        print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
-
-        print(regr_multi.get_params())
+        # print(regr_multi.get_params())
         # print("The best estimator across ALL searched params:", regr_multi.best_estimator_)
         # print("The best score across ALL searched params:", regr_multi.best_score_)
         # print("The best parameters across ALL searched params:", regr_multi.best_params_)
@@ -40,7 +41,7 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
     yPredictAll = np.delete(yPredictAll,0,0)
 
     print('#####')
-    print(name_str + ' Cross-validation results:')
+    print('GBR Cross-validation results:')
     mse_all = mean_squared_error(yTestAll, yPredictAll)
     print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
 
@@ -50,22 +51,21 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
     print("The RMSE on all tests Z-dir: {:.4f}".format(np.sqrt(mse_z)))
 
     fig = plt.figure(figsize=(6,6))
-    plt.plot(yPredictAll[:,0:1],yPredict[:,0:1],'o')
+    plt.plot(yPredictAll[:,0:1],yTestAll[:,0:1],'o')
     plt.xlabel('Predicted Values [m]')
     plt.ylabel('Target Values [m]')
     plt.title('X coordinate Performance')
-    plt.xlim([-3,4])
-    plt.ylim([-3,4])
+    plt.xlim([-4,4])
+    plt.ylim([-4,4])
+    plt.savefig('gbr1.png')
 
     fig2 = plt.figure(figsize=(6,6))
-    plt.plot(yPredictAll[:,1:],yPredict[:,1:],'o')
+    plt.plot(yPredictAll[:,1:],yTestAll[:,1:],'o')
     plt.xlabel('Predicted Values [m]')
     plt.ylabel('Target Values [m]')
     plt.title('Z coordinate Performance')
-    plt.xlim([-3,4])
-    plt.ylim([-3,4])
+    plt.xlim([-4,4])
+    plt.ylim([-4,4])
 
+    plt.savefig('gbr2.png')
     plt.show()
-
-if __name__ == '__main__':
-    tryClassifier()
