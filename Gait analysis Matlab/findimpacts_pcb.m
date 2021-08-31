@@ -1,4 +1,4 @@
-function [arrival_idx, peak_idx, peak_mag, impactT, impacts] = findimpacts_pcb(impactT,pcbT,filt_pcbD,Fs,num_sensors, visualize)
+function [arrival_idx, peak_idx, peak_mag, impactT, impacts] = findimpacts_pcb(impactT,impacts,pcbT,filt_pcbD,Fs,num_sensors, visualize)
 % finds the accelerometer impacts based on impacts found through fsr
 % uses the fsr timestamps to window region and extract
 % arrival index, peak index, and peak mag

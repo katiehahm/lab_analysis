@@ -1,0 +1,41 @@
+clear all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2';
+
+% ################# change ########################
+datestr = '08_30_1';
+run_num = '_221';
+% #################################################
+
+% load 3 datasets
+load([data_root_katie, datestr, run_num])
+load([data_root_katie, datestr])
+T = readtable([data_root_katie, 'Take ', datestr]);
+
+num_sensors = 4;
+Fs = 12800;
+keySet = {'Rballi','Rtoe','Rheel','Rballo','Ltoe','Lheel','Lballi','Lballo'};
+valueSet = [5 6 7 8 1 2 3 4];
+Mfsr = containers.Map(keySet, valueSet);
+keySet = {'Lbx','Lby','Lbz','Lhx','Lhy','Lhz','Ltx','Lty','Ltz','Rbx','Rby','Rbz','Rhx','Rhy','Rhz','Rtx','Rty','Rtz'};
+valueSet = [6 7 8 3 4 5 6 7 8 12 13 14 9 10 11 12 13 14];
+Mmocap = containers.Map(keySet, valueSet);
+
+% ############# do clipping/sync here ###############
+% ###################################################
+
+% overall plot for visual check
+plot_3data(pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL,Mfsr)
+
+% clean and filter pcb data
+filt_pcbD = lpf_data(pcbD);
+
+% finding footfalls based on fsr heel data 6/7/21
+[impactT, impactsM, RheelT, RtoeT, LheelT, LtoeT] = findimpacts_fsr(fsrT,fsrD,Mfsr);
+[RheelT, RtoeT, LheelT, LtoeT] = heel_toe_fsr(impactsT, fsrT, fsrD, Mfsr);
+
+
+% pcb extract
+[arrival_idx, peak_idx, peak_mag, impactT, impacts] = findimpacts_pcb(impactT,pcbT,filt_pcbD,Fs,num_sensors,true);
+
+% mocap extract
+[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impactT,mocapT,mocapR,mocapL,true);

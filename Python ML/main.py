@@ -99,4 +99,12 @@ param_distributions_r = {
 # tryClassifierCV(inputs, outputsM, model_g, param_distributions_g, 20, 'GBR', k_fold)
 # GBRtest(inputs, outputsM, k_fold)
 # RFtest(inputs, outputsM, k_fold)
-LinearRegtest(inputs, outputsM, k_fold)
+# LinearRegtest(inputs, outputsM, k_fold)
+
+# using previous location to estimate next one 8/23/21
+# print(np.shape(outputs[1:,:]))
+# print(np.shape(inputs[:-1,:]))
+inputs_wprev = np.concatenate((inputs[1:,:], outputsM[:-1,:]), axis=1)
+print(np.shape(outputsM[:-1,:]))
+print(np.shape(inputs_wprev))
+RFtest(inputs_wprev, outputsM[:-1,:], k_fold)
