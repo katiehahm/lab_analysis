@@ -1,4 +1,4 @@
-function [] = plot_3data(pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL,Mfsr)
+function [] = plot_3data(pcbD,pcbT,fsrD,fsrT,mocapR,mocapL,mocapT,Mfsr)
 % plots pcb,fsr, and mocap data for visualization
 % plots Rheel, Rtoe, Lheel, Ltoe, pcb(all), mocapR(y-axis), mocapL(y-axis)
 % in a 7 x 1 subplot

@@ -1,4 +1,5 @@
 clear all
+close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\';
 
 % ################# change ########################
@@ -34,18 +35,16 @@ pcbTime(end)
 
 %%
 % overall plot for visual check
-plot_3data(pcbD,pcbT,fsrT,fsrD,mocapT,mocapR,mocapL,Mfsr)
+plot_3data(pcbData,pcbTime,fsrData,fsrTime,mocapR,mocapL,mocapT,Mfsr)
 
 % clean and filter pcb data
-filt_pcbD = lpf_data(pcbD);
+filt_pcbD = lpf_data(pcbData);
 
-% finding footfalls based on fsr heel data 6/7/21
-[impactT, impactsM, RheelT, RtoeT, LheelT, LtoeT] = findimpacts_fsr(fsrT,fsrD,Mfsr);
-[RheelT, RtoeT, LheelT, LtoeT] = heel_toe_fsr(impactsT, fsrT, fsrD, Mfsr);
-
+% finding footfalls based on fsr heel data
+[impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr);
 
 % pcb extract
-[arrival_idx, peak_idx, peak_mag, impactT, impacts] = findimpacts_pcb(impactT,pcbT,filt_pcbD,Fs,num_sensors,true);
+[arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts(:,2),pcbTime,filt_pcbD,Fs,num_sensors,true);
 
 % mocap extract
-[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impactT,mocapT,mocapR,mocapL,true);
+[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impacts(:,2),mocapT,mocapR,mocapL,true);

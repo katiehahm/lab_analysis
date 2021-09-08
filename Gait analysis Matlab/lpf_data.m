@@ -10,7 +10,7 @@ function [d] = lpf_data(datas)
 %     % Chebyshev window with 30 dB of ripple
 %     lpf = fir1(order, cutfreq, 'low', chebwin(35,30));
 
-    lpf = fir1(48, 0.3, 'low'); % 48th order means steep decline after 0.3 rad cutoff
+    lpf = fir1(48, 0.25, 'low'); % 48th order means steep decline after 0.3 rad cutoff
 %     figure;
 %     freqz(lpf,1)
     d = filter(lpf,1,datas);

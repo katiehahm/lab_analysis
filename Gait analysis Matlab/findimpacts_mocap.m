@@ -1,6 +1,7 @@
 function [extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impactT,mocapT,mocapR,mocapL,visualize)
 % finds the locations from mocap based on impacts found through fsr
 % saves locations to coordinates matrix
+% whichfoot: right is 1, left is 0
 % 6/8/21
 
 footstep_time = 0.3; % length of time foot is reliably still
@@ -11,7 +12,6 @@ whichfoot = zeros(length(impactT),1);
 extracted_pts_R = ones(length(impactT),1);
 extracted_pts_L = ones(length(impactT),1);
 rightft = 1;
-leftft = 2;
 avg_seg = 10; % take the average of 10 datapoints
 for i = 1:length(impactT)
     starti = findTindex(impactT(i),mocapT);
@@ -90,7 +90,7 @@ if visualize
     title('Left foot y')
 end
 
-size(coordinates)
+% size(coordinates)
 
 end
 
