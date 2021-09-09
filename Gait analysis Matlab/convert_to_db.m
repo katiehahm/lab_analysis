@@ -33,7 +33,7 @@ mocapT(end)
 fsrTime(end)
 pcbTime(end)
 
-%%
+%% extracting data 9/9/21
 % overall plot for visual check
 plot_3data(pcbData,pcbTime,fsrData,fsrTime,mocapR,mocapL,mocapT,Mfsr)
 
@@ -44,7 +44,19 @@ filt_pcbD = lpf_data(pcbData);
 [impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr);
 
 % pcb extract
-[arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts(:,2),pcbTime,filt_pcbD,Fs,num_sensors,true);
+[arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts,fsrTime,pcbTime,filt_pcbD,Fs,num_sensors,true);
 
 % mocap extract
-[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impacts(:,2),mocapT,mocapR,mocapL,true);
+[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impacts,fsrTime,mocapT,mocapR,mocapL,true);
+
+%% saving data to matlab and excel 9/9/21
+filename = [data_root_katie, 'ProcessedData\', datestr];
+save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
+    'fsrTime','fsrData','impacts','Rheel','Lheel','Rtoe','Ltoe', ...
+    'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
+disp(append("Saved as ", filename))
+
+excelfilename = [data_root_katie, 'ProcessedData\', datestr, '_excel.xlsx'];
+T = table(arrival_idx,peak_idx,peak_mag,impacts,coordinates);
+writetable(T,excelfilename)
+

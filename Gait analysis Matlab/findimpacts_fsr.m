@@ -2,7 +2,7 @@ function [impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,M
 % finds the heel impacts from fsr data
 % by looking at right and left heel strikes, findpeaks, and filtering out
 % wide peaks and peaks with no =0 between them
-% impacts = [heel peak idx, heel peak time, heel peak mag, 1(R) or 0(L)]
+% impacts = [heel start idx, heel peak idx, heel peak mag, 1(R) or 0(L)]
 % R/Lheel = [initial impact index, init impact time, peak idx, peak magnitude]
 % R/Ltoe = [end impact index, end impact time, peak idx, peak magnitude]
 % 6/8/21, edited 9/1/21
@@ -92,8 +92,8 @@ Lheel(:,3) = locsL;
 Lheel(:,4) = pksL;
 
 % sort them in time order
-impacts = [locsR,fsrTime(locsR)',pksR,ones(length(locsR),1); locsL, fsrTime(locsL)',pksL, zeros(length(locsL),1)];
-impacts = sortrows(impacts);
+impacts = [Rheel(:,1),locsR,pksR,ones(length(locsR),1); Lheel(:,1), locsL, pksL, zeros(length(locsL),1)];
+impacts = sortrows(impacts,1);
 
 % find toe times
 heel_to_toe_window = 1; % 1 sec window between heel peak and toe off

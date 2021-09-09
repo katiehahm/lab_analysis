@@ -7,8 +7,8 @@ function [extracted_idx_R, extracted_idx_L, coordinates, whichfoot] = findimpact
 % 9/9/21, modified from before when it just used fsr to find the next coord
 % now it inverts the y-sig, find peak, plus buffer, then store coord if ok
 % with fsr
-% extracted_idx_R/L stores the index of the extracted coordinate
 
+% footstep_time = 0.3; % length of time foot is reliably still
 impactT = fsrTime(impacts(:,1));
 impactRorL = impacts(:,4);
 coordinatesR = zeros(length(impactT),2);
@@ -36,29 +36,25 @@ for i = 1:length(impactT)
     RorL = impactRorL(i);
     if RorL == 0 % left
         indeces = find(locsLtime > heeltime);
-        index = indeces(1);
-        mocapI = locsL(index);
+        mocapI = indeces(1);
         coordinatesL(i,:) = [mocapL(mocapI,1),mocapL(mocapI,3)];
         coordinates(i,:) = [mocapL(mocapI,1),mocapL(mocapI,3)];
         whichfoot(i) = 0;
         extracted_idx_L(i) = mocapI;
     else
         indeces = find(locsRtime > heeltime);
-        index = indeces(1);
-        mocapI = locsR(index);
-        coordinatesR(i,1) = mocapR(mocapI,1);
-        coordinatesR(i,2) = mocapR(mocapI,3);
+        mocapI = indeces(1);
+        coordinatesR(i,:) = [mocapR(mocapI,1),mocapR(mocapI,3)];
         coordinates(i,:) = [mocapR(mocapI,1),mocapR(mocapI,3)];
         whichfoot(i) = 1;
         extracted_idx_R(i) = mocapI;
     end
 end
 
-% deleting 0 elements
+coordinatesR = nonzeros(coordinatesR);
+coordinatesL = nonzeros(coordinatesL);
 extracted_idx_R = nonzeros(extracted_idx_R);
 extracted_idx_L = nonzeros(extracted_idx_L);
-coordinatesR(~any(coordinatesR,2),:) = [];
-coordinatesL(~any(coordinatesL,2),:) = [];
 
 % rightft = 1;
 % avg_seg = 10; % take the average of 10 datapoints
@@ -102,6 +98,7 @@ coordinatesL(~any(coordinatesL,2),:) = [];
 %     end
 % end
 
+
 if visualize
     figure;
     subplot(3,1,1)
@@ -138,6 +135,7 @@ if visualize
     title('Left foot y')
 end
 
+% size(coordinates)
 
 end
 
