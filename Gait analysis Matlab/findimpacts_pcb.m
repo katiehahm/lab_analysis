@@ -6,8 +6,8 @@ function [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts,fsrTime,pcb
 % 6/8/21
 
 
-window_width = Fs*0.4; % shaking lasts < 0.3s
-offset = 0.4; % start window 1/4 of window behind the fsr start
+window_width = Fs*0.3; % shaking lasts < 0.3s
+offset = 0.25; % start window 1/4 of window behind the fsr start
 impactT = fsrTime(impacts(:,1));
 arrival_idx = zeros(length(impactT),num_sensors);
 peak_idx = zeros(length(impactT),num_sensors);

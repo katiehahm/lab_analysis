@@ -33,6 +33,14 @@ clip_pcb_fromMocap.m (8/30/21)
 convertMocap.m (8/30/21)
 	converts table form of mocap data to array form
 
+extract_straight_paths.m (9/9/21)
+	Uses the left and right directions of mocap to extract out turning points
+	Results in more consistent data since only straight path walking is used
+
+distance_btw_coordinates.m (9/14/21)
+	Used by extract_straight_paths.m to calculate distance traveled by foot between two heel strikes
+	To extract turning points
+
 
 Python
 ================================================

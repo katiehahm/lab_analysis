@@ -1,11 +1,9 @@
-function [impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr)
-% finds the heel impacts from fsr data
+function [impacts] = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr)
+% finds the heel & toe impacts from fsr data
 % by looking at right and left heel strikes, findpeaks, and filtering out
 % wide peaks and peaks with no =0 between them
-% impacts = [heel start idx, heel peak idx, heel peak mag, 1(R) or 0(L)]
-% R/Lheel = [initial impact index, init impact time, peak idx, peak magnitude]
-% R/Ltoe = [end impact index, end impact time, peak idx, peak magnitude]
-% 6/8/21, edited 9/1/21
+% impacts = [heel start idx, heel pk idx, heel pk mag, toe end idx, toe pk idx, toe pk mag, 1(R) or 0(L)]
+% 9/15/21
 
 Fs = 519;
 
@@ -61,6 +59,26 @@ end
 locsL(omitL) = [];
 pksL(omitL) = [];
 
+% filter out peaks that are too close to each other (9/15/21)
+min_num_idx_apart = Fs*0.15; % peaks must be greater than 0.1s apart
+omitR = [];
+for i = 2:length(pksR)
+    if locsR(i) - locsR(i-1) < min_num_idx_apart
+        omitR(end+1) = i;
+    end
+end
+locsR(omitR) = [];
+pksR(omitR) = [];
+
+omitL = [];
+for i = 2:length(pksL)
+    if locsL(i) - locsL(i-1) < min_num_idx_apart
+        omitL(end+1) = i;
+    end
+end
+locsL(omitL) = [];
+pksL(omitL) = [];
+
 % find actual start of heel strike instead of peak
 heel_to_peak = 0.2; % max 0.2s from onset of heel to peak
 NL = length(locsL);
@@ -91,10 +109,6 @@ end
 Lheel(:,3) = locsL;
 Lheel(:,4) = pksL;
 
-% sort them in time order
-impacts = [locsR,fsrTime(locsR)',pksR,ones(length(locsR),1); locsL, fsrTime(locsL)',pksL, zeros(length(locsL),1)];
-impacts = sortrows(impacts);
-
 % find toe times
 heel_to_toe_window = 1; % 1 sec window between heel peak and toe off
 heel_to_toe_idx = heel_to_toe_window*Fs;
@@ -102,7 +116,8 @@ Ltoe = zeros(NL,4);
 Rtoe = zeros(NR,4);
 for i = 1:NL
     heel_idx = locsL(i);
-    toe_window = fsrData(heel_idx:heel_idx + heel_to_toe_idx,Mfsr('Ltoe'));
+    end_window = min(heel_idx + heel_to_toe_idx, length(fsrData(:,1)));
+    toe_window = fsrData(heel_idx:end_window,Mfsr('Ltoe'));
     % toe peak
     [pk_mag, pk_idx] = max(toe_window);
     Ltoe(i,4) = pk_mag;
@@ -115,7 +130,8 @@ end
 
 for i = 1:NR
     heel_idx = locsR(i);
-    toe_window = fsrData(heel_idx:heel_idx+heel_to_toe_idx,Mfsr('Rtoe'));
+    end_window = min(heel_idx + heel_to_toe_idx, length(fsrData(:,1)));
+    toe_window = fsrData(heel_idx:end_window,Mfsr('Rtoe'));
     % toe peak
     [pk_mag, pk_idx] = max(toe_window);
     Rtoe(i,4) = pk_mag;
@@ -125,6 +141,18 @@ for i = 1:NR
     Rtoe(i,1) = ipt + heel_idx - 1;
     Rtoe(i,2) = fsrTime(Rtoe(i,1));
 end
+
+% sort them in time order
+impacts = [Rheel(:,1),locsR,pksR,Rtoe(:,1),Rtoe(:,3),Rtoe(ones(length(locsR),1); Lheel(:,1), locsL, pksL, zeros(length(locsL),1)];
+impacts = sortrows(impacts,1);
+% filter out peaks that are too close to each other (9/15/21)
+omit = [];
+for i = 2:length(impacts)
+    if impacts(i,1) - impacts(i-1,1) < min_num_idx_apart
+        omit(end+1) = i;
+    end
+end
+impacts(i,:) = [];
 
 % visually check
 figure; hold on

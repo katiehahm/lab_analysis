@@ -10,7 +10,7 @@ function [extracted_idx_R, extracted_idx_L, coordinates, whichfoot] = findimpact
 % extracted_idx_R/L stores the index of the extracted coordinate
 
 impactT = fsrTime(impacts(:,1));
-impactRorL = impacts(:,4);
+impactRorL = impacts(:,7);
 coordinatesR = zeros(length(impactT),2);
 coordinatesL = zeros(length(impactT),2);
 coordinates = zeros(length(impactT),2);

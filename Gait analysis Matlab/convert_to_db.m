@@ -33,6 +33,23 @@ mocapT(end)
 fsrTime(end)
 pcbTime(end)
 
+%% clip end when walking off the floor at the end 9/10/21
+figure; plot(pcbTime, pcbData(:,1)) % use this to see when end is
+clip_end = 54; % (secs) ##### change ####
+
+fsr_end = findTindex(clip_end,fsrTime);
+fsrTime = fsrTime(1:fsr_end);
+fsrData = fsrData(1:fsr_end,:);
+
+pcb_end = findTindex(clip_end,pcbTime);
+pcbTime = pcbTime(1:pcb_end);
+pcbData = pcbData(1:pcb_end,:);
+
+mocap_end = findTindex(clip_end,mocapT);
+mocapT = mocapT(1:mocap_end);
+mocapR = mocapR(1:mocap_end,:);
+mocapL = mocapL(1:mocap_end,:);
+
 %% extracting data 9/9/21
 % overall plot for visual check
 plot_3data(pcbData,pcbTime,fsrData,fsrTime,mocapR,mocapL,mocapT,Mfsr)
@@ -41,7 +58,8 @@ plot_3data(pcbData,pcbTime,fsrData,fsrTime,mocapR,mocapL,mocapT,Mfsr)
 filt_pcbD = lpf_data(pcbData);
 
 % finding footfalls based on fsr heel data
-[impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr);
+% [impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr);
+impacts = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr);
 
 % pcb extract
 [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts,fsrTime,pcbTime,filt_pcbD,Fs,num_sensors,true);
@@ -51,12 +69,19 @@ filt_pcbD = lpf_data(pcbData);
 
 %% saving data to matlab and excel 9/9/21
 filename = [data_root_katie, 'ProcessedData\', datestr];
+% for findimpacts_fsr:
+% save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
+%     'fsrTime','fsrData','impacts','Rheel','Lheel','Rtoe','Ltoe', ...
+%     'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
+
+% for findimpacts_fsr_compact:
 save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
-    'fsrTime','fsrData','impacts','Rheel','Lheel','Rtoe','Ltoe', ...
+    'fsrTime','fsrData','impacts', ...
     'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
 disp(append("Saved as ", filename))
 
-excelfilename = [data_root_katie, 'ProcessedData\', datestr, '_excel.xlsx'];
-T = table(arrival_idx,peak_idx,peak_mag,impacts,coordinates);
-writetable(T,excelfilename)
+% EXCEL
+% excelfilename = [data_root_katie, 'ProcessedData\', datestr, '_excel.xlsx'];
+% T = table(arrival_idx,peak_idx,peak_mag,impacts,coordinates);
+% writetable(T,excelfilename)
 
