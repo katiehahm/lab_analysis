@@ -7,7 +7,7 @@ function [impacts, Rheel, Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,M
 % R/Ltoe = [end impact index, end impact time, peak idx, peak magnitude]
 % 6/8/21, edited 9/1/21
 
-Fs = 519;
+Fs = 518.5;
 
 figure;
 plot(fsrData(:,Mfsr('Rheel')))

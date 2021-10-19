@@ -261,19 +261,10 @@ plot(two3)
 subplot(3,1,3)
 plot(two4)
 
-three1 = xcorr(seg3,seg1);
-three2 = xcorr(seg3,seg2);
+three1 = xcorr(seg3,seg1)
 three4 = xcorr(seg3,seg4);
 figure;
-subplot(3,1,1)
-plot(three1)
-subplot(3,1,2)
-plot(three2)
-subplot(3,1,3)
 plot(three4)
-
-%% wavelet transform 9/28/21
-cwt(hilbert_data(:,1),1)
 
 
 

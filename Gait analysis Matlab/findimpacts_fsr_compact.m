@@ -5,7 +5,7 @@ function [impacts] = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr)
 % impacts = [heel start idx, heel pk idx, heel pk mag, toe end idx, toe pk idx, toe pk mag, 1(R) or 0(L)]
 % 9/15/21
 
-Fs = 519;
+Fs = 518.5;
 
 figure;
 plot(fsrData(:,Mfsr('Rheel')))
