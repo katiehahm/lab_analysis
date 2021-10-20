@@ -20,16 +20,20 @@ extracted_idx_L = zeros(length(impactT),1);
 
 % right leg
 mocapRavg = movmean(-1.*mocapR(:,2),5); % flip height sig to find "peaks"
-[~,locsR,~,~] = findpeaks(mocapRavg,'MinPeakDistance',70); % messy data, so peaks are >70 pts apart
+[~,locsR,~,~] = findpeaks(mocapRavg,'MinPeakDistance',140); % messy data, so peaks are >70 pts apart
 leg_still = 20; % leg stands still for at least 20 pts
 locsR = locsR + leg_still;
-locsRtime = mocapT(locsR);
+% make sure it doesn't exceed mocapT length
+locsRidx = locsR < length(mocapT);
+locsRtime = mocapT(locsR(locsRidx));
 
 % left leg
 mocapLavg = movmean(-1.*mocapL(:,2),5); % flip height sig to find "peaks"
-[~,locsL,~,~] = findpeaks(mocapLavg,'MinPeakDistance',70); % messy data, so peaks are >70 pts apart
+[~,locsL,~,~] = findpeaks(mocapLavg,'MinPeakDistance',140); % messy data, so peaks are >70 pts apart
 locsL = locsL + leg_still;
-locsLtime = mocapT(locsL);
+% make sure it doesn't exceed mocapT length
+locsLidx = locsL < length(mocapT);
+locsLtime = mocapT(locsL(locsLidx));
 
 for i = 1:length(impactT)
     heeltime = impactT(i);
@@ -55,10 +59,17 @@ for i = 1:length(impactT)
 end
 
 % deleting 0 elements
-extracted_idx_R = nonzeros(extracted_idx_R);
-extracted_idx_L = nonzeros(extracted_idx_L);
-coordinatesR(~any(coordinatesR,2),:) = [];
-coordinatesL(~any(coordinatesL,2),:) = [];
+Rzeros = find(extracted_idx_R == 0);
+extracted_idx_R(Rzeros) = [];
+coordinatesR(Rzeros,:) = [];
+Lzeros = find(extracted_idx_L == 0);
+extracted_idx_L(Lzeros) = [];
+coordinatesL(Lzeros,:) = [];
+
+% extracted_idx_R = nonzeros(extracted_idx_R);
+% extracted_idx_L = nonzeros(extracted_idx_L);
+% coordinatesR(~any(coordinatesR,2),:) = [];
+% coordinatesL(~any(coordinatesL,2),:) = [];
 
 % rightft = 1;
 % avg_seg = 10; % take the average of 10 datapoints

@@ -9,75 +9,89 @@ Fs = 518.5;
 
 figure;
 plot(fsrData(:,Mfsr('Rheel')))
-findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5)
-[pksR,locsR,widthsR,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5); % 4th element is prominence
+R_dist = 250;
+findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',100)
+[pksR,locsR,widthsR,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
 title('Right heel')
 
-width_thresh = 500;
-for i = 1:length(widthsR) % filter out wide peaks
-    if widthsR(i) > width_thresh
-        pksR(i) = 0;
-        locsR(i) = 0;
-    end
-end
-pksR = nonzeros(pksR);
-locsR = nonzeros(locsR);
+% width_thresh = 500;
+% for i = 1:length(widthsR) % filter out wide peaks
+%     if widthsR(i) > width_thresh
+%         pksR(i) = 0;
+%         locsR(i) = 0;
+%     end
+% end
+% pksR = nonzeros(pksR);
+% locsR = nonzeros(locsR);
 
 figure;
 plot(fsrData(:,Mfsr('Lheel')))
-findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5)
-[pksL,locsL,widthsL,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',10,'Annotate','extents','MinPeakDistance',0.5);
+L_dist = 270;
+findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',100)
+[pksL,locsL,widthsL,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',L_dist);
 title('Left heel')
 
-for i = 1:length(widthsL) % filter out wide peaks
-    if widthsL(i) > width_thresh
-        pksL(i) = 0;
-        locsL(i) = 0;
-    end
-end
-pksL = nonzeros(pksL);
-locsL = nonzeros(locsL);
-
-% filter out peaks that don't have heel go closer to 0
-omitR = [];
-for i = 2:length(pksR)
-    btw_pk = fsrData(locsR(i-1):locsR(i),Mfsr('Rheel'));
-    if ~any(btw_pk < 1)
-        omitR(end+1) = i;
-    end
-end
-locsR(omitR) = [];
-pksR(omitR) = [];
-
-omitL = [];
-for i = 2:length(pksL)
-    btw_pk = fsrData(locsL(i-1):locsL(i),Mfsr('Lheel'));
-    if ~any(btw_pk < 1)
-        omitL(end+1) = i;
-    end
-end
-locsL(omitL) = [];
-pksL(omitL) = [];
-
-% filter out peaks that are too close to each other (9/15/21)
+% print('1')
+% size(pksL)
+% 
+% for i = 1:length(widthsL) % filter out wide peaks
+%     if widthsL(i) > width_thresh
+%         pksL(i) = 0;
+%         locsL(i) = 0;
+%     end
+% end
+% pksL = nonzeros(pksL);
+% locsL = nonzeros(locsL);
+% 
+% print('2')
+% size(pksL)
+% 
+% % filter out peaks that don't have heel go closer to 0
+% % omitR = [];
+% % for i = 2:length(pksR)
+% %     btw_pk = fsrData(locsR(i-1):locsR(i),Mfsr('Rheel'));
+% %     if ~any(btw_pk < 1)
+% %         omitR(end+1) = i;
+% %     end
+% % end
+% % locsR(omitR) = [];
+% % pksR(omitR) = [];
+% % 
+% % omitL = [];
+% % for i = 2:length(pksL)
+% %     btw_pk = fsrData(locsL(i-1):locsL(i),Mfsr('Lheel'));
+% %     if ~any(btw_pk < 1)
+% %         omitL(end+1) = i;
+% %     end
+% % end
+% % locsL(omitL) = [];
+% % pksL(omitL) = [];
+% 
+% print('3')
+% size(pksL)
+% 
+% % filter out peaks that are too close to each other (9/15/21)
 min_num_idx_apart = Fs*0.15; % peaks must be greater than 0.1s apart
-omitR = [];
-for i = 2:length(pksR)
-    if locsR(i) - locsR(i-1) < min_num_idx_apart
-        omitR(end+1) = i;
-    end
-end
-locsR(omitR) = [];
-pksR(omitR) = [];
-
-omitL = [];
-for i = 2:length(pksL)
-    if locsL(i) - locsL(i-1) < min_num_idx_apart
-        omitL(end+1) = i;
-    end
-end
-locsL(omitL) = [];
-pksL(omitL) = [];
+% omitR = [];
+% for i = 2:length(pksR)
+%     if locsR(i) - locsR(i-1) < min_num_idx_apart
+%         omitR(end+1) = i;
+%     end
+% end
+% locsR(omitR) = [];
+% pksR(omitR) = [];
+% 
+% omitL = [];
+% for i = 2:length(pksL)
+%     if locsL(i) - locsL(i-1) < min_num_idx_apart
+%         omitL(end+1) = i;
+%     end
+% end
+% locsL(omitL) = [];
+% pksL(omitL) = [];
+% 
+% print('4')
+% size(pksL)
 
 % find actual start of heel strike instead of peak
 heel_to_peak = 0.2; % max 0.2s from onset of heel to peak
@@ -96,6 +110,10 @@ end
 
 Rheel(:,3) = locsR;
 Rheel(:,4) = pksR;
+
+disp('2')
+% Warning message happens between 2-3 and 3-5, but idk where!!!!!
+% fix later ######## 10/19/21
 
 for i = 1:length(pksL)
     curr_idx = locsL(i);
@@ -128,6 +146,8 @@ for i = 1:NL
     Ltoe(i,2) = fsrTime(Ltoe(i,1));
 end
 
+disp('3')
+
 for i = 1:NR
     heel_idx = locsR(i);
     end_window = min(heel_idx + heel_to_toe_idx, length(fsrData(:,1)));
@@ -154,6 +174,8 @@ for i = 2:length(impacts)
     end
 end
 impacts(i,:) = [];
+
+disp('5')
 
 % visually check
 figure; hold on

@@ -72,6 +72,10 @@ Experiment2:
 	weight is suitcase carry of weight
 	box is carrying cardboard box
 
+ProcessedData:
+	data as a result of convert_to_db
+	two versions - matlab and excel
+
 Python
 ================================================
 magnitude_predict.py (8/19/21)
