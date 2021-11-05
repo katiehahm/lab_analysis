@@ -4,8 +4,12 @@ function [mocapT, mocapL, mocapR] = convertMocap(T, Mmocap)
 
 A = table2array(T);
 mocapT = A(:,2);
-mocapL = A(:,Mmocap('Lx'):Mmocap('Lz'));
-mocapR = A(:,Mmocap('Rx'):Mmocap('Rz'));
+mocapLraw = A(:,Mmocap('Lx'):Mmocap('Lz'));
+mocapRraw = A(:,Mmocap('Rx'):Mmocap('Rz'));
+
+% added 11/4/21 to interpolate missing data
+mocapL = fillmissing(mocapLraw,'linear');
+mocapR = fillmissing(mocapRraw,'linear');
 
 end
 

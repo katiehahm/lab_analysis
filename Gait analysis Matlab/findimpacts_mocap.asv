@@ -19,8 +19,20 @@ extracted_idx_R = zeros(length(impactT),1);
 extracted_idx_L = zeros(length(impactT),1);
 
 % right leg
-mocapRavg = movmean(-1.*mocapR(:,2),10); % flip height sig to find "peaks"
-[~,locsR,~,~] = findpeaks(mocapRavg,'MinPeakDistance',160); % messy data, so peaks are >70 pts apart
+% this is just for subj 5 count:
+[mocapR(:,1),~] = fillmissing(mocapR(:,1),'movmedian',50);
+[mocapR(:,2),~] = fillmissing(mocapR(:,2),'movmedian',50);
+[mocapR(:,3),~] = fillmissing(mocapR(:,3),'movmedian',50);
+fillmocapR = -1.*mocapR(:,2);
+% [fillmocapR,~] = fillmissing(-1.*mocapR(:,2),'movmedian',50);
+mocapRavg = movmean(fillmocapR,20);
+[~,locsR,~,~] = findpeaks(mocapRavg,'MinPeakDistance',275,'MinPeakProminence',13); % messy data, so peaks are >70 pts apart
+
+
+% this is for regular data:
+% mocapRavg = movmean(-1.*mocapR(:,2),5); % flip height sig to find "peaks"
+% [~,locsR,~,~] = findpeaks(mocapRavg,'MinPeakDistance',160); % messy data, so peaks are >70 pts apart
+
 leg_still = 20; % leg stands still for at least 20 pts
 locsR = locsR + leg_still;
 % make sure it doesn't exceed mocapT length
@@ -28,12 +40,24 @@ locsRidx = locsR < length(mocapT);
 locsRtime = mocapT(locsR(locsRidx));
 
 % left leg
-mocapLavg = movmean(-1.*mocapL(:,2),10); % flip height sig to find "peaks"
-[~,locsL,~,~] = findpeaks(mocapLavg,'MinPeakDistance',160); % messy data, so peaks are >70 pts apart
+% for subj5 count:
+[mocapL(:,1),~] = fillmissing(mocapL(:,1),'movmedian',50);
+[mocapL(:,2),~] = fillmissing(mocapL(:,2),'movmedian',50);
+[mocapL(:,3),~] = fillmissing(mocapL(:,3),'movmedian',50);
+fillmocapL = -1.*mocapL(:,2);
+% [fillmocapR,~] = fillmissing(-1.*mocapR(:,2),'movmedian',50);
+mocapRavg = movmean(fillmocapR,20);
+[~,locsL,~,~] = findpeaks(mocapRavg,'MinPeakDistance',275,'MinPeakProminence',13); % messy data, so peaks are >70 pts apart
+
+
+% mocapLavg = movmean(-1.*mocapL(:,2),5); % flip height sig to find "peaks"
+% [~,locsL,~,~] = findpeaks(mocapLavg,'MinPeakDistance',160); % messy data, so peaks are >70 pts apart
 locsL = locsL + leg_still;
 % make sure it doesn't exceed mocapT length
 locsLidx = locsL < length(mocapT);
 locsLtime = mocapT(locsL(locsLidx));
+
+% locsLtime
 
 for i = 1:length(impactT)
     heeltime = impactT(i);

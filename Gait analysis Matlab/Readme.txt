@@ -4,6 +4,14 @@ For experiments after amendment for testing different gait analysis. Assumes the
 by the motion capture system. Raw data is stored in Lab/Analysis/Experiment2 folder. Processed data (.mat workspaces
 and excel files) are stored in Lab/Analysis/ProcessedExperiment2
 
+Experiment Process
+===============================================
+Rename files
+convert_to_db
+extract_straight_paths
+hist_steptime
+python scripts
+
 Matlab
 ================================================
 convert_to_db.m (8/19/21)
@@ -16,6 +24,11 @@ convert_to_db.m (8/19/21)
 		peak index, peak magnitude
 		peak-to-arrival time
 		previous coordinates, if any, if not, (NaN,NaN)
+	To use:
+	run a section at a time. check that the time lengths are similar
+	check that Lheel and Rheel peaks are properly placed
+	if not, change findpeaks parameters
+	then save file 
 
 find_lpf_thresh.m (8/19/21)
 	Maps out the frequency response of a footfall and just noise clip to see where the lpf threshold should be
@@ -55,10 +68,38 @@ distance_btw_coordinates.m (9/14/21)
 
 findimpacts_fsr_compact.m (9/15/21)
 	Same as findimpacts_fsr but only returns one variable that contains all the information
+	Impacts:
+		1. heel start idx
+		2. heel pk index
+		3. heel peak mag
+		4. toe end idx
+		5. toe pk idx
+		6. toe pk mag
+		7. 1 = right, 0 = left
+	adjustable distance between peaks with findpeaks method to find all peaks
+	delete peaks that don't have data go to "zero" between
+	find actual start of heel strike with aic_pick
+	delete 1st peak of both bc usually not clean
+	find toe times
+	sort, plot
 
 hammering_analysis.m (10/14/21)
 	To analyze the hammering data to see if time of arrival is consistent with different 
 	types of impacts
+
+hist_steptime.m (10/19/21)
+	takes processed data and outputs the histogram of its distribution,
+	mean, std, bimodality
+	used to analyze step time variability
+
+real_steptime.m (10/21/21)
+	to get ground truth of actual step times between left vs right foot
+	to compare against the prediction from hist_steptime
+
+steptime_analysis.m (10/24/21)
+	steptime analysis other than the histogram plotting
+	section 1 looks at direct plotting to observe clustering
+	Deletes differences datapoint if the value is > 2x mean step time bc this is outlier
 
 Data
 ===============================================

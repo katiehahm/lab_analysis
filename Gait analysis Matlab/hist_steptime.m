@@ -1,7 +1,7 @@
-%%
+%% 10/19/21 to analyze step time of experiment
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
-subj = '1'; % number of subject
-intervention = 'normal2'; % normal1 slow insole weight count normal2
+subj = '2'; % number of subject
+intervention = 'count'; % normal1 slow insole weight count normal2
 filename = [data_root_katie, subj, '_', intervention];
 
 load(filename)
@@ -15,13 +15,13 @@ end
 
 bin = round(1+3.22*log(numel(differences)));
 % figure
-% hf=histfit(differences,bin,'kernel');
+hf=histfit(differences,bin,'kernel');
 figure
 histfit(differences,bin)
 hold on
 x=get(hf(2),'XData'); 
 y=get(hf(2),'YData');
-plot(x,y,'Color','k','LineWidth', 2)
+plot(x,y,'Color','b','LineWidth', 2)
 titleroot = 'Step time distribution ';
 title([titleroot, intervention])
 xlabel('Step Time')
@@ -29,89 +29,60 @@ ylabel('Occurances')
 mu=mean(differences);
 sigma=std(differences);
 hold on
-line([mu, mu], ylim, 'Color', 'c', 'LineWidth', 0.5); 
+line([mu, mu], ylim, 'Color', 'c', 'LineWidth', 1); 
 line([mu + sigma, mu + sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
 line([mu - sigma, mu - sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
 legend('Histogram','Normal','Fitted','1 std')
 
 mu
 sigma
-[BF, BC] = bimodalitycoeff(differences)
+k = kurtosis(differences);
+s = skewness(differences);
+bimodality = (s^2 + 1)/k
 
-%% old stuff from other folder
-differences1=[];
-differences2=[];
-differences3=[];
-for kk = 1:numel(filenames)
-    load(filenames{kk});
-    filt_datas = lpf_data(datas);
-    loc_names = {'A1', 'A5', 'E1'};
-    Fs = 12800;
-    clean_data = clean_envelope(filt_datas,Fs);
+%% 10/20/21 for running data files that have straight paths extracted
 
-    [onset_idx, peak_idx, peak_val] = TDOA2(clean_data,impactN,Fs,loc_names,false);
-    [diffsinlength1,diffsinlength2,diffsinlength3] = cadence(peak_idx,impactN,Fs);
-    differences1= [differences1;diffsinlength1];
-    differences2= [differences2;diffsinlength2];
-    differences3= [differences3;diffsinlength3];
+clear all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+subj = '1'; % number of subject
+intervention = 'weight'; % normal1 slow insole weight count normal2
+filename = [data_root_katie, subj, '_', intervention, '_extract_straight_paths'];
+
+load(filename)
+Fs = 12800;
+
+differences = [];
+for i = 1:(length(data)-1)
+    if data(i+1,19) ~= -1 % edge doesn't say it's the start of seg
+        curr = min(data(i+1,1:4));
+        prev = min(data(i,1:4));
+        differences(end+1) = (curr - prev)/Fs;
+    end
 end
 
-bin = round(1+3.22*log(numel(differences1)));
+bin = round(1+3.22*log(numel(differences)));
+% figure
+hf=histfit(differences,bin,'kernel');
 figure
-hf=histfit(differences1,bin,'kernel');
-figure
-histfit(differences1,bin)
+histfit(differences,bin)
 hold on
 x=get(hf(2),'XData'); 
 y=get(hf(2),'YData');
-plot(x,y,'Color','g','LineWidth', 2)
-title('Stride Time Sensor 1')
-xlabel('Stride Time')
+plot(x,y,'Color','b','LineWidth', 2)
+titleroot = 'Step time distribution ';
+title([titleroot, intervention])
+xlabel('Step Time')
 ylabel('Occurances')
-mu=mean(differences1);
-sigma=std(differences1);
+mu=mean(differences);
+sigma=std(differences);
 hold on
-line([mu, mu], ylim, 'Color', 'c', 'LineWidth', 0.5); 
+line([mu, mu], ylim, 'Color', 'c', 'LineWidth', 1); 
 line([mu + sigma, mu + sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
 line([mu - sigma, mu - sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-hold off
+legend('Histogram','Normal','Fitted','1 std')
 
-bin = round(1+3.22*log(numel(differences2)));
-figure
-hf=histfit(differences2,bin,'kernel');
-figure
-histfit(differences2,bin)
-hold on
-x=get(hf(2),'XData'); 
-y=get(hf(2),'YData');
-plot(x,y,'Color','g','LineWidth', 2)
-title('Stride Time Sensor 2')
-xlabel('Stride Time')
-ylabel('Occurances')
-mu2=mean(differences2);
-sigma2=std(differences2);
-hold on
-line([mu2, mu2], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-line([mu2 + sigma2, mu2 + sigma2], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-line([mu2 - sigma2, mu2 - sigma2], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-bin = round(1+3.22*log(numel(differences3)));
-hold off
-
-bin = round(1+3.22*log(numel(differences3)));
-figure
-hf=histfit(differences3,bin,'kernel');
-figure
-histfit(differences3,bin)
-hold on
-x=get(hf(2),'XData'); 
-y=get(hf(2),'YData');
-plot(x,y,'Color','g','LineWidth', 2)
-title('Stride Time Sensor 3')
-xlabel('Stride Time')
-ylabel('Occurances')
-mu3=mean(differences3);
-sigma3=std(differences3);
-hold on
-line([mu3, mu3], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-line([mu3 + sigma3, mu3 + sigma3], ylim, 'Color', 'c', 'LineWidth', 0.5); 
-line([mu3 - sigma3, mu3 - sigma3], ylim, 'Color', 'c', 'LineWidth', 0.5); 
+mu
+sigma
+k = kurtosis(differences);
+s = skewness(differences);
+bimodality = (s^2 + 1)/k

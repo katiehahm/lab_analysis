@@ -15,7 +15,8 @@ Fs = 518.5;
 converted_starti = round(startt*Fs);
 converted_endi = round(endt*Fs);
 
-fsrTime = linspace(0, Time(9,end), Time(9,end)*Fs);
+maxT = max(Time(9,:)); % because sometimes end of Time is 0
+fsrTime = linspace(0, maxT, maxT*Fs);
 Data = Data(1:8,converted_starti:converted_endi);
 fsrData = Data';
 

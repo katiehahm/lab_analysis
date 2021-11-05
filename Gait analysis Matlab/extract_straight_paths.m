@@ -2,11 +2,71 @@
 % uses left and right directions of mocap to extract out turning points
 % look at plots of distance changes to set a threshold for where turns are
 
-clear all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\';
-datestr = '08_30_1'; % ####### change #########
-load([data_root_katie, datestr])
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+subj = '2'; % number of subject
+intervention = 'normal1'; % normal1 slow insole weight count normal2
+filename = [data_root_katie, subj, '_', intervention];
 
+load(filename)
+
+%% 10/20/21 
+% assumes that subj always walks in the long direction, so 
+% any change in x direction is a turn
+
+% compare these two figures with the two at the end of this section
+% the turning points should've been eliminated
+figure;
+plot(arrival_idx(:,1),coordinates(:,1),'.')
+title('All footfalls')
+xlabel('Sample number')
+ylabel('x coordinates')
+figure;
+plot(arrival_idx(:,1),coordinates(:,2),'.')
+
+
+data = zeros(length(impacts),19);
+new_impacts = zeros(length(impacts),7);
+% start of segment is -1, end of segment is 1, 0 in between
+toe_t = fsrTime(impacts(1,4));
+heel_t = fsrTime(impacts(1,1));
+data(1,:) = [arrival_idx(1,:),peak_idx(1,:),peak_mag(1,:),coordinates(1,:),...
+    impacts(1,3),toe_t-heel_t, NaN, NaN, -1];
+new_impacts(1,:) = impacts(1,:);
+curr_x = sign( coordinates(2,1)-coordinates(1,1) );
+index_count = 2;
+for i = 2:(length(coordinates)-1)
+    new_x = sign( coordinates(i+1,1)-coordinates(i,1) );
+    if curr_x ~= new_x % change in direction
+        curr_x = new_x;
+        % delete datapoint and end/start the segment
+        data(index_count-1,19) = 1;
+        data(index_count,19) = -1;
+    else % no change in direction
+        toe_t = fsrTime(impacts(i+1,4));
+        heel_t = fsrTime(impacts(i+1,1));
+        data(index_count,1:18) = [arrival_idx(i+1,:),peak_idx(i+1,:),peak_mag(i+1,:),coordinates(i+1,:),...
+            impacts(i+1,3),toe_t-heel_t, coordinates(i,:)];
+        index_count = index_count+1;
+        new_impacts(index_count,:) = impacts(i+1,:);
+    end
+end
+
+% delete the empty rows at the end of data
+data(~any(data,2),:) = [];
+
+figure;
+plot(data(:,1),data(:,13),'.')
+title('Only straight path footfalls')
+xlabel('Sample number')
+ylabel('x coordinates')
+figure;
+plot(data(:,1),data(:,14),'.')
+
+% now run the save file section at the end
+
+%% 9/9/21
+% this and next section relies on step length inconsistencies
+% to parse out where the turns are
 coordN = length(whichfoot);
 coordinatesR = zeros(length(extracted_pts_R),2);
 coordinatesL = zeros(length(extracted_pts_L),2);
@@ -84,7 +144,7 @@ end
 figure;
 plot(mocapT(coordinates_idx(2:end)),step_lengths,'k.')
 
-%% extract turns 
+%% 9/9/21 continuation: extract turns 
 
 % set these values based on plots above
 thresh_min = 0.379;
@@ -115,10 +175,9 @@ end
 data(~any(data,2),:) = [];
 
 %% save data matrix to excel and matlab workspace
-
-filename = [datestr, '_extract_straight_paths'];
+filename = [filename, '_extract_straight_paths'];
 % save to matlab
-save(filename,'data')
+save(filename,'data','new_impacts')
 
 % save to excel
 excel_filename = [filename,'_excel.xlsx'];

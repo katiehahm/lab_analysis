@@ -7,21 +7,21 @@ function [impacts] = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr)
 
 Fs = 518.5;
 
-% figure;
-% plot(fsrData(:,Mfsr('Rheel')))
+figure;
+plot(fsrData(:,Mfsr('Rheel')))
 R_dist = 420; % adjust #########################
 [pksR,locsR,widthsR,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
-% hold on
-% plot(locsR,pksR,'bx')
-% title('Right heel')
+hold on
+plot(locsR,pksR,'bx')
+title('Right heel')
 
-% figure;
-% plot(fsrData(:,Mfsr('Lheel')))
+figure;
+plot(fsrData(:,Mfsr('Lheel')))
 L_dist = 450; % adjust #########################
 [pksL,locsL,widthsL,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',15,'Annotate','extents','MinPeakDistance',L_dist);
-% hold on
-% plot(locsL,pksL,'bx')
-% title('Left heel')
+hold on
+plot(locsL,pksL,'bx')
+title('Left heel')
 
 % just for subj 4 count:
 % pksL = pksL(4:end);
@@ -81,58 +81,56 @@ Lheel(:,3) = locsL;
 Lheel(:,4) = pksL;
 
 % find toe times
-toe_threshR = 1.3; % adjust ######################
-toe_threshL = 1; % adjust ######################
+toe_threshR = 1; % adjust ######################
+toe_threshL = 10; % adjust ######################
+heel_to_toe_window = 1; % 1 sec window between heel peak and toe off
+heel_to_toe_idx = round(heel_to_toe_window*Fs);
 Ltoe = zeros(NL,4);
 Rtoe = zeros(NR,4);
-for i = 2:NL
-    heel_idx = Lheel(i,1);
+for i = 1:NL
+    heel_idx = locsL(i);
     if i == NL
         end_window = length(fsrData(:,1));
     else
-        end_window = Lheel(i+1,1);
+        end_window = locsL(i+1);
     end
+%     end_window = min(heel_idx + heel_to_toe_idx, length(fsrData(:,1)));
+%     end_window = round(end_window);
     toe_window = fsrData(heel_idx:end_window,Mfsr('Ltoe'));
     % toe peak
     [pk_mag, pk_idx] = max(toe_window);
     Ltoe(i,4) = pk_mag;
     Ltoe(i,3) = pk_idx + heel_idx - 1;
     % toe off
-    indeces = find(toe_window(pk_idx:end) < toe_threshL);
-    if length(indeces) < 1 % couldn't find toe off, something wrong
-        heel_idx
+    end_long_window = min(pk_idx+heel_idx+heel_to_toe_idx,length(fsrData));
+    toe_long_window = fsrData(pk_idx + heel_idx:end_long_window,Mfsr('Ltoe'));
+    indeces = find(toe_long_window < toe_threshL);
+    if length(indeces) < 1
         figure;
-        plot(toe_window(pk_idx:end))
+        plot(toe_long_window)
     else
     end_idx = indeces(1) + pk_idx + heel_idx - 1;
     Ltoe(i,1) = end_idx;
     Ltoe(i,2) = fsrTime(end_idx);
     end
+%     ipt = findchangepts(toe_window);
+%     Ltoe(i,1) = ipt + heel_idx - 1;
+%     Ltoe(i,2) = fsrTime(Ltoe(i,1));
 end
 
-for i = 2:NR
-    heel_idx = Rheel(i,1);
-    if i == NR
-        end_window = length(fsrData(:,1));
-    else
-        end_window = Rheel(i+1,1);
-    end
+for i = 1:NR
+    heel_idx = locsR(i);
+    end_window = min(heel_idx + heel_to_toe_idx, length(fsrData(:,1)));
+    end_window = round(end_window);
     toe_window = fsrData(heel_idx:end_window,Mfsr('Rtoe'));
     % toe peak
     [pk_mag, pk_idx] = max(toe_window);
     Rtoe(i,4) = pk_mag;
     Rtoe(i,3) = pk_idx + heel_idx - 1;
     % toe off
-    indeces = find(toe_window(pk_idx:end) < toe_threshR);
-    if length(indeces) < 1 % couldn't find toe off, something wrong
-        heel_idx
-        figure;
-        plot(toe_window(pk_idx:end))
-    else
-    end_idx = indeces(1) + pk_idx + heel_idx - 1;
-    Rtoe(i,1) = end_idx;
-    Rtoe(i,2) = fsrTime(end_idx);
-    end
+    ipt = findchangepts(toe_window);
+    Rtoe(i,1) = ipt + heel_idx - 1;
+    Rtoe(i,2) = fsrTime(Rtoe(i,1));
 end
 
 % always throw out first peak because often not clean
@@ -149,30 +147,30 @@ impacts = sortrows(impacts,1);
 figure;
 subplot(2,1,1)
 hold on
-plot(fsrData(:,Mfsr('Lheel')))
-plot(Lheel(:,1),fsrData(Lheel(:,1),Mfsr('Lheel')),'rx','MarkerSize',12)
-plot(Lheel(:,3),Lheel(:,4),'bx','MarkerSize',12)
-title('Left heel')
+plot(fsrData(:,Mfsr('Rheel')))
+plot(Rheel(:,1),fsrData(Rheel(:,1),Mfsr('Rheel')),'rx','MarkerSize',8)
+plot(Rheel(:,3),Rheel(:,4),'bx','MarkerSize',8)
+title('Right heel')
 
 subplot(2,1,2)
 hold on
-plot(fsrData(:,Mfsr('Rheel')))
-plot(Rheel(:,1),fsrData(Rheel(:,1),Mfsr('Rheel')),'rx','MarkerSize',12)
-plot(Rheel(:,3),Rheel(:,4),'bx','MarkerSize',12)
-title('Right heel')
+plot(fsrData(:,Mfsr('Lheel')))
+plot(Lheel(:,1),fsrData(Lheel(:,1),Mfsr('Lheel')),'rx','MarkerSize',8)
+plot(Lheel(:,3),Lheel(:,4),'bx','MarkerSize',8)
+title('Left heel')
 
 figure;
 subplot(2,1,1)
 hold on
 plot(fsrData(:,Mfsr('Ltoe')))
-plot(Ltoe(:,1),0,'rx','MarkerSize',12)
-plot(Ltoe(:,3),Ltoe(:,4),'bx','MarkerSize',12)
+plot(Ltoe(:,1),0,'rx','MarkerSize',8)
+plot(Ltoe(:,3),Ltoe(:,4),'bx','MarkerSize',8)
 title('Left toe')
 
 subplot(2,1,2)
 hold on
 plot(fsrData(:,Mfsr('Rtoe')))
-plot(Rtoe(:,1),0,'rx','MarkerSize',12)
-plot(Rtoe(:,3),Rtoe(:,4),'bx','MarkerSize',12)
+plot(Rtoe(:,1),0,'rx','MarkerSize',8)
+plot(Rtoe(:,3),Rtoe(:,4),'bx','MarkerSize',8)
 title('Right toe')
 end

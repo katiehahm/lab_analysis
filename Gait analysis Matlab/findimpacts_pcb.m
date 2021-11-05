@@ -1,13 +1,10 @@
-function [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(impacts,fsrTime,pcbT,filt_pcbD,Fs,num_sensors, visualize)
+function [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(window_width,offset,impacts,fsrTime,pcbT,filt_pcbD,num_sensors, visualize)
 % finds the accelerometer impacts based on impacts found through fsr
 % uses the fsr timestamps to window region and extract
 % arrival index, peak index, and peak mag
 % if no impact was found, value is NaN
 % 6/8/21
 
-
-window_width = Fs*0.3; % shaking lasts < 0.3s
-offset = 0.25; % start window 1/4 of window behind the fsr start
 impactT = fsrTime(impacts(:,1));
 arrival_idx = zeros(length(impactT),num_sensors);
 peak_idx = zeros(length(impactT),num_sensors);
