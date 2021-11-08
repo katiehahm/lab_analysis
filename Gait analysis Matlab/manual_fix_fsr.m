@@ -3,16 +3,20 @@ function [impacts] = manual_fix_fsr(impacts,fsrData,Mfsr,heel_start_wrong,heel_s
 % inputs are arrays
 % 11/5/21
 
-for i = length(heel_start_wrong)
-    indeces = abs(impacts(:,1) - heel_start_wrong(i));
-    [~,change_idx] = min(indeces);
-    impacts(change_idx,1) = heel_start_right(i);
+if ~isempty(heel_start_wrong)
+    for i = 1:length(heel_start_wrong)
+        indeces = abs(impacts(:,1) - heel_start_wrong(i));
+        [~,change_idx] = min(indeces);
+        impacts(change_idx,1) = heel_start_right(i);
+    end
 end
 
-for i = length(heel_pk_wrong)
-    indeces = abs(impacts(:,2) - heel_pk_wrong(i));
-    [~,change_idx] = min(indeces);
-    impacts(change_idx,2) = heel_pk_right(i);
+if ~isempty(heel_pk_wrong)
+    for i = 1:length(heel_pk_wrong)
+        indeces = abs(impacts(:,2) - heel_pk_wrong(i));
+        [~,change_idx] = min(indeces);
+        impacts(change_idx,2) = heel_pk_right(i);
+    end
 end
 
 % visually check

@@ -116,36 +116,36 @@ coordinatesL(Lzeros,:) = [];
 if visualize
     figure;
     subplot(3,1,1)
-    plot(mocapT,mocapR(:,1))
+    plot(mocapR(:,1))
     hold on
-    plot(mocapT(extracted_idx_R), coordinatesR(:,1),'r.','MarkerSize',10)
+    plot(extracted_idx_R, coordinatesR(:,1),'r.','MarkerSize',10)
     title('Right foot x')
     subplot(3,1,2)
-    plot(mocapT,mocapR(:,3))
+    plot(mocapR(:,3))
     hold on
-    plot(mocapT(extracted_idx_R), coordinatesR(:,2),'r.','MarkerSize',10)
+    plot(extracted_idx_R, coordinatesR(:,2),'r.','MarkerSize',10)
     title('Right foot z')
     subplot(3,1,3)
-    plot(mocapT,mocapR(:,2))
+    plot(mocapR(:,2))
     hold on
-    plot(mocapT(extracted_idx_R), mocapR(extracted_idx_R,2),'r.','MarkerSize',10)
+    plot(extracted_idx_R, mocapR(extracted_idx_R,2),'r.','MarkerSize',10)
     title('Right foot y')
 
     figure;
     subplot(3,1,1)
-    plot(mocapT,mocapL(:,1))
+    plot(mocapL(:,1))
     hold on
-    plot(mocapT(extracted_idx_L), coordinatesL(:,1),'r.','MarkerSize',10)
+    plot(extracted_idx_L, coordinatesL(:,1),'r.','MarkerSize',10)
     title('Left foot x')
     subplot(3,1,2)
-    plot(mocapT,mocapL(:,3))
+    plot(mocapL(:,3))
     hold on
-    plot(mocapT(extracted_idx_L), coordinatesL(:,2),'r.','MarkerSize',10)
+    plot(extracted_idx_L, coordinatesL(:,2),'r.','MarkerSize',10)
     title('Left foot z')
     subplot(3,1,3)
-    plot(mocapT,mocapL(:,2))
+    plot(mocapL(:,2))
     hold on
-    plot(mocapT(extracted_idx_L), mocapL(extracted_idx_L,2),'r.','MarkerSize',10)
+    plot(extracted_idx_L, mocapL(extracted_idx_L,2),'r.','MarkerSize',10)
     title('Left foot y')
 end
 

@@ -1,4 +1,4 @@
-function [impacts] = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr)
+function [impacts] = findimpacts_fsr_compact(fsrTime,fsrData,Mfsr,L_dist,R_dist,min_threshL,min_threshR,toe_threshL,toe_threshR)
 % finds the heel & toe impacts from fsr data
 % by looking at right and left heel strikes, findpeaks, and filtering out
 % wide peaks and peaks with no =0 between them
@@ -9,16 +9,14 @@ Fs = 518.5;
 
 % figure;
 % plot(fsrData(:,Mfsr('Rheel')))
-R_dist = 420; % adjust #########################
-[pksR,locsR,widthsR,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
+[pksR,locsR,~,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
 % hold on
 % plot(locsR,pksR,'bx')
 % title('Right heel')
 
 % figure;
 % plot(fsrData(:,Mfsr('Lheel')))
-L_dist = 450; % adjust #########################
-[pksL,locsL,widthsL,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',15,'Annotate','extents','MinPeakDistance',L_dist);
+[pksL,locsL,~,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',L_dist);
 % hold on
 % plot(locsL,pksL,'bx')
 % title('Left heel')
@@ -29,8 +27,6 @@ L_dist = 450; % adjust #########################
 % widthsL = widthsL(4:end);
 
 % filter out peaks that don't have heel go close to 0 in between
-min_threshL = 5; % ############ adjust
-min_threshR = 8; % ############ adjust
 omitR = [];
 for i = 2:length(pksR)
     btw_pk = fsrData(locsR(i-1):locsR(i),Mfsr('Rheel'));
@@ -81,8 +77,6 @@ Lheel(:,3) = locsL;
 Lheel(:,4) = pksL;
 
 % find toe times
-toe_threshR = 1.3; % adjust ######################
-toe_threshL = 1; % adjust ######################
 Ltoe = zeros(NL,4);
 Rtoe = zeros(NR,4);
 for i = 2:NL

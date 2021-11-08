@@ -101,6 +101,14 @@ steptime_analysis.m (10/24/21)
 	section 1 looks at direct plotting to observe clustering
 	Deletes differences datapoint if the value is > 2x mean step time bc this is outlier
 
+manual_fix_fsr/pcb/mocap.m (11/5/21)
+	takes in wrong and right arrays and corrects the features
+	manually change values based on the plots
+
+fixing_subj3_fsr_insole.m (11/5/21)
+	use this file when fsr conversion failed and need to convert csv file to mat file
+
+
 Data
 ===============================================
 Hammering: 9/30
