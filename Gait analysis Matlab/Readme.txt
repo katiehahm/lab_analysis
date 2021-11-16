@@ -46,21 +46,12 @@ clip_pcb_fromMocap.m (8/30/21)
 convertMocap.m (8/30/21)
 	converts table form of mocap data to array form
 
-extract_straight_paths.m (9/9/21)
-	Uses the left and right directions of mocap to extract out turning points
+extract_straight_paths.m (9/9/21), heavily rewritten 11/16/21
+	Uses the changes in sign in x-directions of mocap to extract out turning points
 	Results in more consistent data since only straight path walking is used
-	Save resulting data matrix into both excel and matlab files. 
-	Data matrix:
-		1-4. arrival index
-		5-8. peak index
-		9-12. peak mag
-		13. coordinate x
-		14. coordinate y
-		15. heel peak magnitude
-		16. toe end time - heel start time
-		17. previous x coordinate
-		18. previous y coordinate
-		19. edge (-1,0,....0,1) to indicate edges of walking segment paths
+	Saves all original variables with turns extracted
+	Additional variable walk_episodes saved that indicates start (-1) and stop (1)
+	Saved as mat workspace 'filename_extract_straight_paths'
 
 distance_btw_coordinates.m (9/14/21)
 	Used by extract_straight_paths.m to calculate distance traveled by foot between two heel strikes
@@ -108,6 +99,20 @@ manual_fix_fsr/pcb/mocap.m (11/5/21)
 fixing_subj3_fsr_insole.m (11/5/21)
 	use this file when fsr conversion failed and need to convert csv file to mat file
 
+trying_snob_steptime.m (11/9/21)
+	tried different distributions of mixture models
+
+groundrxnforce_analysis.m (11/10/21)
+	(probably) ignore first section "accumulating all forces"
+	energy extraction:
+		defined a hard noise_thresh cutoff for each sensor 
+		window is current arrival idx to next, or to the end of the dataset
+		envelope of abs of this window while doing movmean. Find first instance where this dips below thresh
+		if none dips below, keep increasing thresh until it does
+		sum the window until this dip
+		save to variable energy (#impacts x 4)
+		this energy var is appended to all processed data files
+
 
 Data
 ===============================================
@@ -129,3 +134,5 @@ Python
 ================================================
 magnitude_predict.py (8/19/21)
 	Predicts the magnitude of heel strike based on data
+
+to run: anaconda prompt and type python main.py
