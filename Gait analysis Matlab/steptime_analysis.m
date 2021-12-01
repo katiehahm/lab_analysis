@@ -2,37 +2,40 @@
 
 clear all
 close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
-subj = '1'; % number of subject
+% data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\';
+% subj = '1'; % number of subject
 % intervention = 'normal1';
-takes = {'normal1', 'slow', 'insole', 'weight', 'count', 'normal2'};
+% takes = {'normal1', 'slow', 'insole', 'weight', 'count', 'normal2'};
+takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
 % takes = {'normal1', 'insole', 'weight', 'count', 'normal2'}; % for subj2
 
 for take = 1:length(takes)
     intervention = char(takes(take));
 %     filename = [data_root_katie, subj, '_', intervention, '_extract_straight_paths'];
-    filename = [data_root_katie, subj, '_', intervention];
+%     filename = [data_root_katie, subj, '_', intervention];
+    filename = [data_root_katie, intervention];
 
     load(string(filename))
     Fs = 12800;
 
-    % for extract_straight_paths:
-%     differences = [];
-%     for i = 1:(length(data)-1)
-%         if data(i+1,19) ~= -1 % edge doesn't say it's the start of seg
-%             curr = min(data(i+1,1:4));
-%             prev = min(data(i,1:4));
-%             differences(end+1) = (curr - prev)/Fs;
-%         end
-%     end
-
-    % for original data
-    differences = zeros(1,length(arrival_idx)-1);
-    for i = 1:(length(arrival_idx)-1)
-        curr = min(arrival_idx(i+1,:));
-        prev = min(arrival_idx(i,:));
-        differences(i) = (curr - prev)/Fs;
+%     for extract_straight_paths:
+    differences = [];
+    for i = 2:length(whichfoot)
+        if walk_segments(i) ~= -1 % not the start of episode
+            curr = min(arrival_idx(i,1:4));
+            prev = min(arrival_idx(i-1,1:4));
+            differences(end+1) = (curr - prev)/Fs;
+        end
     end
+
+%     % for original data
+%     differences = zeros(1,length(arrival_idx)-1);
+%     for i = 1:(length(arrival_idx)-1)
+%         curr = min(arrival_idx(i+1,:));
+%         prev = min(arrival_idx(i,:));
+%         differences(i) = (curr - prev)/Fs;
+%     end
 
     mu=mean(differences);
     outliers = find(differences>(mu*1.5) );
@@ -70,47 +73,107 @@ for take = 1:length(takes)
     % plot(ones(1,length(differences)), differences, 'kx')
 end
 
+%% 11/16/21 single intervention plot
+
+clear all
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+subj = '1'; % number of subject
+intervention = 'weight';
+
+filename = [data_root_katie, subj, '_', intervention, '_extract_straight_paths'];
+load(string(filename))
+Fs = 12800;
+
+differences = [];
+for i = 2:length(whichfoot)
+    if walk_episodes(i) ~= -1 % not the start of episode
+        curr = min(arrival_idx(i,1:4));
+        prev = min(arrival_idx(i-1,1:4));
+        differences(end+1) = (curr - prev)/Fs;
+    end
+end
+
+mu=mean(differences);
+outliers = find(differences>(mu*1.5) );
+differences(outliers) = [];
+
+bin = round(1+3.22*log(numel(differences)));
+figure
+hf=histfit(differences,bin,'kernel');
+figure
+histfit(differences,bin)
+hold on
+x=get(hf(2),'XData'); 
+y=get(hf(2),'YData');
+plot(x,y,'Color','b','LineWidth', 2)
+titleroot = 'Step time distribution ';
+title([titleroot, intervention])
+xlabel('Step Time')
+ylabel('Occurances')
+mu=mean(differences);
+sigma=std(differences);
+hold on
+line([mu, mu], ylim, 'Color', 'c', 'LineWidth', 1); 
+line([mu + sigma, mu + sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
+line([mu - sigma, mu - sigma], ylim, 'Color', 'c', 'LineWidth', 0.5); 
+legend('Histogram','Normal','Fitted','1 std')
+k = kurtosis(differences);
+s = skewness(differences);
+bimodality = (s^2 + 1)/k;
+iqrange = iqr(differences);
+
+disp([intervention, ' ','mu ','sigma ','bimodality ','kurtosis ','skewness ', 'iqr'])
+disp([mu, sigma, bimodality, k, s, iqrange])
+
+figure;
+plot(ones(1,length(differences)), differences, 'kx')
+
+figure;
+plot(differences,'b.')
+
 %% gaussian mixture model 10/25/21
 
 clear all
 close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj'; 
-subj = '10'; % number of subject
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\'; 
+% subj = '1'; % number of subject
 % intervention = 'normal1';
-takes = {'normal1', 'slow', 'insole', 'weight', 'count','box', 'normal2'};
-% takes = {'normal1', 'insole', 'weight', 'count', 'normal2'}; % subject 2
+% takes = {'normal1', 'slow', 'insole', 'weight', 'count','normal2'};
+takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
 GMmodels = zeros(length(takes),9);
 
 for take = 1:length(takes)
     intervention = char(takes(take));
 %     filename = [data_root_katie, subj, '_', intervention, '_extract_straight_paths'];
-    filename = [data_root_katie, subj, '_', intervention];
+%     filename = [data_root_katie, subj, '_', intervention];
+    filename = [data_root_katie,intervention];
 
     load(string(filename))
     Fs = 12800;
 
     % for extract_straight_paths:
-%     differences = [];
-%     for i = 1:(length(data)-1)
-%         if data(i+1,19) ~= -1 % edge doesn't say it's the start of seg
-%             curr = min(data(i+1,1:4));
-%             prev = min(data(i,1:4));
-%             differences(end+1) = (curr - prev)/Fs;
-%         end
-%     end
-
-    % for original data
-    differences = zeros(1,length(arrival_idx)-1);
-    for i = 1:(length(arrival_idx)-1)
-        curr = min(arrival_idx(i+1,:));
-        prev = min(arrival_idx(i,:));
-        differences(i) = (curr - prev)/Fs;
-        if curr - prev < 0
-            differences(i) = [];
-        else
-            differences(i) = (curr - prev)/Fs;
+    differences = [];
+    for i = 2:length(whichfoot)
+        if walk_segments(i) ~= -1 % not the start of episode
+            curr = min(arrival_idx(i,1:4));
+            prev = min(arrival_idx(i-1,1:4));
+            differences(end+1) = (curr - prev)/Fs;
         end
     end
+
+    % for original data
+%     differences = zeros(1,length(arrival_idx)-1);
+%     for i = 1:(length(arrival_idx)-1)
+%         curr = min(arrival_idx(i+1,:));
+%         prev = min(arrival_idx(i,:));
+%         differences(i) = (curr - prev)/Fs;
+%         if curr - prev < 0
+%             differences(i) = [];
+%         else
+%             differences(i) = (curr - prev)/Fs;
+%         end
+%     end
     
     % extracting outliers (step lengths that are too large)
     % that are most likely bc of extraight_straight_paths
@@ -145,21 +208,32 @@ GMmodels
 scaled_means = zeros(r,3);
 
 for i = 1:r
-    [prop1,~] = max(GMmodels(i,6:7));
+    [prop1,~] = max(GMmodels(i,5:6));
     if (1-prop1) < abs(0.5-prop1)
-        scaled_means(i,1) = GMmodels(i,2) + (GMmodels(i,3)-GMmodels(i,2))*(1- (GMmodels(i,6))^2);
-        scaled_means(i,2) = GMmodels(i,3) + (GMmodels(i,2)-GMmodels(i,3))*(1- (GMmodels(i,7))^2);
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*(1- (GMmodels(i,5))^2);
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*(1- (GMmodels(i,6))^2);
         scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
     else
-        scaled_means(i,1) = GMmodels(i,2) + (GMmodels(i,3)-GMmodels(i,2))*abs(0.5- GMmodels(i,6));
-        scaled_means(i,2) = GMmodels(i,3) + (GMmodels(i,2)-GMmodels(i,3))*abs(0.5- GMmodels(i,7));
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*abs(0.5- GMmodels(i,5));
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*abs(0.5- GMmodels(i,6));
         scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
     end
 end
+scaled_means
+% comparison_matrix = [real_times(:,1),scaled_means(:,1),scaled_means(:,2),real_times(:,2),real_times(:,3)];
 
-comparison_matrix = [real_times(:,1),scaled_means(:,1),scaled_means(:,2),real_times(:,2),real_times(:,3)];
+%% calculation of how accurate GMM scaled guess is for each step time 11/23/21
 
+real_time = all_params(:,1:2);
+gmm_time = scaled_means(:,1:2);
 
+max_real = max(real_time,[],2);
+min_real = min(real_time,[],2);
+max_gmm = max(gmm_time,[],2);
+min_gmm = min(real_time,[],2);
+
+performance = sum(abs(max_real - max_gmm)) + sum(abs(min_real-min_gmm));
+performance = performance/(2*length(real_time))
 
 %% comparison_matrix calculations 11/10/21
 

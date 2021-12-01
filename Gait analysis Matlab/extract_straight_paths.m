@@ -3,14 +3,17 @@
 % plots the original points and overlays with x with the deleted points
 clear all
 close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
-subj = '10'; % number of subject
-takes = {'normal1', 'slow', 'insole', 'weight', 'count', 'box','normal2'};
+% data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\';
+% subj = '10'; % number of subject
+takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
+% takes = {'normal1', 'slow', 'insole', 'weight', 'count', 'box','normal2'};
 deleted_pts = cell(length(takes),1);
 
 for take = 1:length(takes)
     intervention = char(takes(take));
-    filename = [data_root_katie, subj, '_', intervention];
+%     filename = [data_root_katie, subj, '_', intervention];
+    filename = [data_root_katie,intervention];
     load(filename)
 
     % 10/20/21 
@@ -108,4 +111,28 @@ for take = 1:length(takes)
     
     filename = [filename, '_extract_straight_paths'];
     save(filename,'arrival_idx','coordinates','energy','impacts','peak_idx','peak_mag','whichfoot','walk_episodes')
+end
+
+%% forgot to add some variables to extract_straight_paths 11/17/21
+
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\Subj';
+takes = {'normal1', 'slow', 'insole', 'weight', 'count', 'box', 'normal2'};
+
+for person = 1:10
+    subj = int2str(person);
+
+    for take = 1:length(takes)
+        if person < 6 && take == 6
+            continue
+        elseif person == 2 && take == 2
+            continue
+        else
+            intervention = char(takes(take));
+            filename = [data_root_katie, subj, '_', intervention];
+            filename2 = [data_root_katie, subj, '_', intervention,'_extract_straight_paths'];
+            load(string(filename))
+            
+            save(filename2,'filt_pcbD','fsrData','fsrTime','mocapL','mocapR','mocapT','pcbTime','-append')
+        end
+    end
 end

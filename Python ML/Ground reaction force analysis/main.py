@@ -38,8 +38,10 @@ import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import StratifiedKFold
 
+from sklearn.linear_model import LinearRegression
+
 # read csv file
-data = pd.read_csv('distance_to_sensor_grf_features.csv',header=None)
+data = pd.read_csv('grf_features_allAccel.csv',header=None)
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -53,18 +55,21 @@ ncols = sh[1]
 
 # define inputs/outputs
 # 0th column is the subject number
-subject_split = np.array([0,826,1546,2501,3491,4268,5287,6276,7482,8667])
-
-for i in range(3):
-    i += 7
-    subj_start = subject_split[i]
+subj_start = 0
+for i in range(10):
+    subjN = i+1
+    subj_col = dataM[:,0]
+    indeces = np.nonzero(subj_col == (subjN+1))
     if i == 9:
         subj_end = nrows
     else:
-        subj_end = subject_split[i+1]
+        subj_end = indeces[0][0]
     outputs = dataM[subj_start:subj_end,1] # 826 starts subj 2
     inputs = dataM[subj_start:subj_end,2:]
-    # inputsNorm = preprocessing.normalize(inputs, norm='l1')
+    subj_start = subj_end
+    print(np.shape(outputs))
+    print(np.shape(inputs))
+    inputsNorm = preprocessing.normalize(inputs, norm='l1')
     # outputsCM = np.divide(outputs,10)
     # outputsM = np.divide(outputsCM,100)
 
@@ -75,8 +80,7 @@ for i in range(3):
 
     k_fold = KFold(n_splits=n_fold, shuffle=True,random_state=13)
 
-    print(np.shape(outputs))
-    print(np.shape(inputs))
+
 
     param_dist = {
     	'n_estimators' : 100,
@@ -113,6 +117,9 @@ for i in range(3):
         'min_weight_fraction_leaf': [0.5, 0.25, 0.1, 0.05, 0.01, 0.0]
     }
 
+    model_l = LinearRegression()
+    param_distributions_l = {}
+
     # model_k = KNeighborsClassifier(n_neighbors=3)
     # param_distributions_k = {
     #     # 'sample_weights': stats.randint(Low=)
@@ -121,7 +128,8 @@ for i in range(3):
     print('################')
     print('Subject number: ')
     print(i+1)
-    tryClassifierCV(inputs, outputs, model_g, param_distributions_g, 15, 'GBR', k_fold)
+    graphit=True
+    tryClassifierCV(inputsNorm, outputs, model_g, param_distributions_g, 10, 'GBR', kfold,i,graphit)
 
     # X_train, X_test, y_train, y_test = train_test_split(inputs, outputs, test_size=0.1, random_state=13)
     # params = {

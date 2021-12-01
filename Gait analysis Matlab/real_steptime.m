@@ -2,43 +2,48 @@
 % to get real left vs right step times to compare against
 % prediction from hist_steptime
 
-clear all
+% clear all
 close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\';
-subj = '8'; % number of subject
-takes = {'normal1', 'slow', 'insole', 'weight', 'count','box','normal2'};
-% takes = {'normal1', 'insole', 'weight', 'count', 'normal2'};
+% data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\';
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\';
+% subj = '1'; % number of subject
+% takes = {'normal1', 'slow', 'insole', 'weight', 'count','normal2'};
+takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
 
-Fs = 518.5;
+% Fs = 518.5;
+Fs = 296.3;
 
 all_params = zeros(length(takes),4); % stores left_right mean, std, right_left mean, std
 
 for take = 1:length(takes)
     intervention = char(takes(take));
-%     filename = [data_root_katie, subj, '_', intervention, '_extract_straight_paths'];
-    filename = [data_root_katie, 'Subj',subj, '_', intervention];
+%     filename = [data_root_katie, 'Subj', subj, '_', intervention, '_extract_straight_paths'];
+%     filename = [data_root_katie, 'Subj',subj, '_', intervention];
+    filename = [data_root_katie,intervention];
 
     load(string(filename))
-    new_impacts = impacts; % for non straight paths data
     
-    if take == 1
-        intervention = 'Regular 1';
-    end
-    if take == length(takes)
-        intervention = 'Regular 2';
-    end
+%     if take == 1
+%         intervention = 'Regular 1';
+%     end
+%     if take == length(takes)
+%         intervention = 'Regular 2';
+%     end
     
     left_right_diff = [];
     right_left_diff = [];
 
-    for i = 2:length(new_impacts)
-        if new_impacts(i,7) == 1 % right foot
-            if new_impacts(i-1,7) == 0 % left foot
-                left_right_diff(end+1) = new_impacts(i,1)-new_impacts(i-1,1);
-            end
-        elseif new_impacts(i,7) == 0 % left foot
-            if new_impacts(i-1,7) == 1 % right foot
-                right_left_diff(end+1) = new_impacts(i,1)-new_impacts(i-1,1);
+    for i = 2:length(whichfoot)
+        % this if statement is for extract_straight_paths
+        if walk_segments(i) ~= -1 % not the start of episode
+            if whichfoot(i) == 1 % right foot
+                if whichfoot(i-1) == 0 % left foot
+                    left_right_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+                end
+            elseif whichfoot(i) == 0 % left foot
+                if whichfoot(i-1) == 1 % right foot
+                    right_left_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+                end
             end
         end
     end
@@ -92,6 +97,62 @@ for take = 1:length(takes)
 end
 
 all_params
+
+%% 11/16/21
+% single intervention plot
+
+clear all
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\';
+subj = '10'; % number of subject
+intervention = 'weight';
+
+Fs = 518.5;
+
+filename = [data_root_katie, 'Subj', subj, '_', intervention, '_extract_straight_paths'];
+load(string(filename))
+
+left_right_diff = [];
+right_left_diff = [];
+
+for i = 2:length(whichfoot)
+    % this if statement is for extract_straight_paths
+    if walk_episodes(i) ~= -1 % not the start of episode
+        if whichfoot(i) == 1 % right foot
+            if whichfoot(i-1) == 0 % left foot
+                left_right_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+            end
+        elseif whichfoot(i) == 0 % left foot
+            if whichfoot(i-1) == 1 % right foot
+                right_left_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+            end
+        end
+    end
+end
+
+left_right_diff = left_right_diff./Fs;
+right_left_diff = right_left_diff./Fs;
+
+left_right_mean = mean(left_right_diff);
+left_right_std = std(left_right_diff);
+right_left_mean = mean(right_left_diff);
+right_left_std = std(right_left_diff);
+
+splitN = 5;
+progression = zeros(splitN,2);
+lrN = round(length(left_right_diff)/splitN);
+rlN = round(length(right_left_diff)/splitN);
+progression(1,:) = [mean(left_right_diff(1:lrN)),mean(right_left_diff(1:rlN))];
+
+for i = 1:splitN-1 % split into splitN sections
+    lastidx = min(length(left_right_diff),lrN*(i+1));
+    progression(i+1,1) = mean(left_right_diff(lrN*i+1:lastidx));
+    lastidx = min(length(right_left_diff),rlN*(i+1));
+    progression(i+1,2) = mean(right_left_diff(rlN*i+1:lastidx));
+end
+
+progression
+
 
 %% 11/10/21 trying gaussian mix on original fsr data
 

@@ -20,11 +20,12 @@ if ~isempty(heel_pk_wrong)
 end
 
 % visually check
+RorL = length(impacts(1,:)); % always the last column
 figure;
 subplot(2,1,1)
 hold on
 plot(fsrData(:,Mfsr('Lheel')))
-lefts = find(impacts(:,7) == 0);
+lefts = find(impacts(:,RorL) == 0);
 plot(impacts(lefts,1),fsrData(impacts(lefts,1),Mfsr('Lheel')),'rx','MarkerSize',12)
 plot(impacts(lefts,2),fsrData(impacts(lefts,2),Mfsr('Lheel')),'bx','MarkerSize',12)
 title('Left heel')
@@ -32,7 +33,7 @@ title('Left heel')
 subplot(2,1,2)
 hold on
 plot(fsrData(:,Mfsr('Rheel')))
-rights = find(impacts(:,7) == 1);
+rights = find(impacts(:,RorL) == 1);
 plot(impacts(rights,1),fsrData(impacts(rights,1),Mfsr('Rheel')),'rx','MarkerSize',8)
 plot(impacts(rights,2),fsrData(impacts(rights,2),Mfsr('Rheel')),'bx','MarkerSize',12)
 title('Right heel')

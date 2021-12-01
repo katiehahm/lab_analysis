@@ -34,6 +34,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 from tryGBR import GBR
 from tryClassifierCV import tryClassifierCV
+from tryClassifierSingleCV import tryClassifierSingleCV2
 from GBRtest import GBRtest
 from RFtest import RFtest
 from LinearRegtest import LinearRegtest
@@ -41,7 +42,7 @@ from LinearRegtest import LinearRegtest
 
 # read csv file
 # data = pd.read_csv('06-04_06-10_finaldata.csv',header=None)
-data = pd.read_csv('06-04_06-10_edited_finaldata_nonan.csv',header=None)
+data = pd.read_csv('12-1-21_localization_dataset.csv',header=None)
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -54,14 +55,13 @@ nrows = sh[0]
 ncols = sh[1]
 
 # define inputs/outputs
-outputs = dataM[:,ncols-2:]
-inputs = dataM[:,0:ncols-2]
+outputs = dataM[:,0:1]
+inputs = dataM[:,1:]
 inputsNorm = preprocessing.normalize(inputs, norm='l1')
-outputsCM = np.divide(outputs,10)
-outputsM = np.divide(outputsCM,100)
+
 
 # cross validation to increase amount of data
-n_fold = 10
+n_fold = 5
 k_fold = KFold(n_splits=n_fold, shuffle=True,random_state=30)
 
 print(np.shape(outputs))
@@ -96,7 +96,7 @@ param_distributions_r = {
 
 # print(model_g.get_params().keys())
 
-# tryClassifierCV(inputs, outputsM, model_g, param_distributions_g, 20, 'GBR', k_fold)
+tryClassifierSingleCV(inputs, outputs, model_g, param_distributions_g, 5, 'GBR', k_fold)
 # GBRtest(inputs, outputsM, k_fold)
 # RFtest(inputs, outputsM, k_fold)
 # LinearRegtest(inputs, outputsM, k_fold)
@@ -104,7 +104,7 @@ param_distributions_r = {
 # using previous location to estimate next one 8/23/21
 # print(np.shape(outputs[1:,:]))
 # print(np.shape(inputs[:-1,:]))
-inputs_wprev = np.concatenate((inputs[1:,:], outputsM[:-1,:]), axis=1)
-print(np.shape(outputsM[:-1,:]))
-print(np.shape(inputs_wprev))
-RFtest(inputs_wprev, outputsM[:-1,:], k_fold)
+# inputs_wprev = np.concatenate((inputs[1:,:], outputsM[:-1,:]), axis=1)
+# print(np.shape(outputsM[:-1,:]))
+# print(np.shape(inputs_wprev))
+# RFtest(inputs_wprev, outputsM[:-1,:], k_fold)

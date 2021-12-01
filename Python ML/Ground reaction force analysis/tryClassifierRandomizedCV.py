@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import RandomizedSearchCV
 import math
 
-def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold):
+def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold,i,graphit):
     yTestAll = [1]
     yPredictAll = [1]
     
@@ -33,6 +33,7 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
 
         # print(model_cv.get_params())
         from pprint import pprint
+        # pprint(model_cv.get_params())
         # pprint(model_cv.best_estimator_.get_params())
 
     
@@ -45,18 +46,20 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
     mse_all = mean_squared_error(yTestAll, yPredictAll)
     print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
 
-    fig = plt.figure(figsize=(6,6))
-    plt.plot(yPredictAll,yTestAll,'o')
-    plt.xlabel('Predicted Values [V]')
-    plt.ylabel('Target Values [V]')
-    plt.title('Ground reaction force estimator performance')
-    axes = plt.gca()
-    y_min,y_max = axes.get_ylim()
-    plt.xlim([y_min,y_max])
-    # plt.xlim([-3,4])
-    # plt.ylim([-3,4])
+    if graphit:
+        fig = plt.figure(figsize=(6,6))
+        plt.plot(yPredictAll,yTestAll,'o')
+        plt.xlabel('Predicted Values [V]')
+        plt.ylabel('Target Values [V]')
+        subjnum = i + 1
+        plt.title('Subj %i GRF estimator performance' %subjnum)
+        axes = plt.gca()
+        y_min,y_max = axes.get_ylim()
+        plt.xlim([y_min,y_max])
+        # plt.xlim([-3,4])
+        # plt.ylim([-3,4])
 
-    plt.show()
+        plt.show()
 
 if __name__ == '__main__':
     tryClassifier()

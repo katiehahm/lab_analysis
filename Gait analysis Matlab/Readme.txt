@@ -113,6 +113,21 @@ groundrxnforce_analysis.m (11/10/21)
 		save to variable energy (#impacts x 4)
 		this energy var is appended to all processed data files
 
+analysis_11_18_21.m (11/19/21)
+	code to analyze data in folder 11/18/21
+
+convert_to_db_wAccel.m (11/22/21)
+	similar to convert to db but for data containing accelerometer data
+	Used to process data collected on 11/21/21
+	assumes fsr = [fsr, accx, accy, accz].
+
+fixing_subj3_fsr_insole.m (11/22/21)
+	this file is used when fsr conversion fails
+	so there is both .mat and .xlsx file at the same time
+
+find_accel_impacts.m (11/22/21)
+	Used to find the peak acceleration for each impact and its indeces
+
 
 Data
 ===============================================
@@ -130,9 +145,23 @@ ProcessedData:
 	data as a result of convert_to_db
 	two versions - matlab and excel
 
+11_18_21:
+	Did testing to figure out a more time limp intervention and also test hammer hits at different magnitudes
+	Last dataset in this folder contains accelerometer data from fsr
+	Details are at the back of green notebook
+
 Python
 ================================================
 magnitude_predict.py (8/19/21)
 	Predicts the magnitude of heel strike based on data
 
 to run: anaconda prompt and type python main.py
+
+11-30-21_localization_dataset.csv 
+	xcoord, ycoord, arrival idx, peak mag, energy, prev x, prev y
+	for 11-21-21 dataset
+
+
+11-30-21_localization_dataset.csv 
+	xcoord, curr mag/prev mag, curr energy/prev energy, prev x
+	for 11-21-21 dataset

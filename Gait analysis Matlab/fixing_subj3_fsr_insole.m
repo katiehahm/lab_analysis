@@ -1,7 +1,10 @@
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\';
-name = [data_root_katie,'Subject 10\subj10_fsr_insole_csv.csv'];
-load([data_root_katie,'Subject 10\subj10_fsr_insole'])
-filename = [data_root_katie,'Subject 10\subj10_fsr_insole2'];
+% this file is used to correct it when fsr process didn't work to .mat
+% so the file was save to .xlsx instead
+
+filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\';
+name = [filename,'stiffLknee_fsr_excel.csv'];
+load([filename,'stiffLknee_fsr_error'])
+
 T = readtable(name);
 A = table2array(T);
 Data = zeros(length(A),9);
@@ -13,7 +16,8 @@ Data(:,5) = A(:,10);
 Data(:,6) = A(:,12);
 Data(:,7) = A(:,14);
 Data(:,8) = A(:,16);
-Data(1:end,9) = A(1:end,18);
+Data(:,9) = A(:,18);
 Data = transpose(Data);
 
+filename = [filename,'stiffLknee_fsr'];
 save(filename, 'Data','Time','Channels','Fs')

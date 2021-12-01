@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from sklearn.model_selection import RandomizedSearchCV
 
-def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold):
+def tryClassifierSingleCV(inp, out, model, param_distributions, n_it, name_str, k_fold):
     yTestAll = [[1,1]]
     yPredictAll = [[1,1]]
     
@@ -17,11 +17,9 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
 
         
         model_cv = RandomizedSearchCV(model, param_distributions=param_distributions, n_iter=n_it, verbose=0)
-        # print(model_cv.get_params())
-        regr_multi = MultiOutputRegressor(model_cv)
-        regr_multi.fit(xTrain, yTrain)
+        model_cv.fit(xTrain, yTrain)
         
-        yPredict = regr_multi.predict(xTest)
+        yPredict = model_cv.predict(xTest)
       
         # saving values to plot
         yTestAll = np.append(yTestAll,yTest,axis=0)
@@ -29,7 +27,7 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
 
         # finding accuracy for each location
         mse = mean_squared_error(yTest, yPredict)
-        print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
+        print("The mean squared error (MSE) on test set: {:.4f}".format(np.sqrt(mse)))
 
         # print(regr_multi.get_params())
         # print("The best estimator across ALL searched params:", regr_multi.best_estimator_)
@@ -44,27 +42,13 @@ def tryClassifierCV(inp, out, model, param_distributions, n_it, name_str, k_fold
     mse_all = mean_squared_error(yTestAll, yPredictAll)
     print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
 
-    mse_x = mean_squared_error(yTestAll[:,0:1], yPredictAll[:,0:1])
-    mse_z = mean_squared_error(yTestAll[:,1:], yPredictAll[:,1:])
-    print("The RMSE on all tests X-dir: {:.4f}".format(np.sqrt(mse_x)))
-    print("The RMSE on all tests Z-dir: {:.4f}".format(np.sqrt(mse_z)))
-
     fig = plt.figure(figsize=(6,6))
-    plt.plot(yPredictAll[:,0:1],yTestAll[:,0:1],'o')
+    plt.plot(yPredictAll,yTestAll,'o')
     plt.xlabel('Predicted Values [m]')
     plt.ylabel('Target Values [m]')
     plt.title('X coordinate Performance')
     plt.xlim([-3,4])
     plt.ylim([-3,4])
-
-    fig2 = plt.figure(figsize=(6,6))
-    plt.plot(yPredictAll[:,1:],yTestAll[:,1:],'o')
-    plt.xlabel('Predicted Values [m]')
-    plt.ylabel('Target Values [m]')
-    plt.title('Z coordinate Performance')
-    plt.xlim([-3,4])
-    plt.ylim([-3,4])
-
     plt.show()
 
 if __name__ == '__main__':
