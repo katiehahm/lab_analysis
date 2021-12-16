@@ -32,7 +32,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 
 # read csv file
-data = pd.read_csv('grf_features_yAccel_trainingset80p.csv',header=None)
+data = pd.read_csv('12_7_21_grf_dataset_predictedloc.csv',header=None)
 data = data.apply(pd.to_numeric, errors='coerce')
 # convert from pandas dataframe to numpy array
 dataM = pd.DataFrame(data).to_numpy()
@@ -42,16 +42,31 @@ ncols = sh[1]
 
 # dataM[:,2:6] = np.divide(dataM[:,2:6],1000)
 
-X = dataM[0:689,2:]
-y = dataM[0:689,1]
+X = dataM[:,2:]
+y = dataM[:,1]
 
 # inputsTrain = X[0:172,:]
 # outputTrain = y[0:172]
 # inputsTest = X[172:,:]
 # outputTest = y[172:]
 
+# n_fold = 10
 
-# z = np.polyfit(inputs,outputs,2)
+# kfold = StratifiedKFold(n_splits=n_fold,shuffle=True,random_state=13)
+# k_fold = KFold(n_splits=n_fold, shuffle=True,random_state=13)
+
+# for k, (train, test) in enumerate(k_fold.split(inp, out)):
+#     print("Running kfold")
+#     xTrain = X[train]
+#     yTrain = y[train]
+#     xTest = X[test]
+#     yTest = y[test]
+
+#     poly_reg = PolynomialFeatures(degree=2)
+# 	X_poly = poly_reg.fit_transform(xTrain)
+# 	lin_reg2 = LinearRegression()
+# 	lin_reg2.fit(X_poly,yTrain)
+# # z = np.polyfit(inputs,outputs,2)
 
 poly_reg = PolynomialFeatures(degree=2)
 X_poly = poly_reg.fit_transform(X)
@@ -68,79 +83,83 @@ lin_reg2.fit(X_poly,y)
 # regular2_X = X[104:228,:]
 # regular2_y = y[104:228]
 
-insoleWeight1_X = dataM[814:840,2:]
-insoleWeight1_y = dataM[814:840,1]
-insoleWeight2_X = dataM[840:862,2:]
-insoleWeight2_y = dataM[840:862,1]
+# insoleWeight1_X = dataM[814:840,2:]
+# insoleWeight1_y = dataM[814:840,1]
+# insoleWeight2_X = dataM[840:862,2:]
+# insoleWeight2_y = dataM[840:862,1]
 
-regular1_X = dataM[689:710,2:]
-regular1_y = dataM[689:710,1]
-regular2_X = dataM[710:735,2:]
-regular2_y = dataM[710:735,1]
+# regular1_X = dataM[689:710,2:]
+# regular1_y = dataM[689:710,1]
+# regular2_X = dataM[710:735,2:]
+# regular2_y = dataM[710:735,1]
 
 
-# predictions1 = lin_reg2.predict(poly_reg.fit_transform(X))
-# mse = mean_squared_error(predictions, y)
-# print("The root mean squared error (RMSE): {:.4f}".format(np.sqrt(mse)))
-# plt.plot(predictions, y,'o')
-# plt.show()
-
-plt.subplot(2,2,1)
-predictions1 = lin_reg2.predict(poly_reg.fit_transform(insoleWeight1_X))
-mse = mean_squared_error(predictions1, insoleWeight1_y)
-print("The root mean squared error (RMSE) 1: {:.4f}".format(np.sqrt(mse)))
-plt.plot(predictions1, insoleWeight1_y, 'o')
-plt.title('InsoleWeight 1')
-plt.xlabel('Predicted Values')
-plt.ylabel('Target Values')
+predictions = lin_reg2.predict(poly_reg.fit_transform(X))
+mse = mean_squared_error(predictions, y)
+print("The root mean squared error (RMSE): {:.4f}".format(np.sqrt(mse)))
+plt.plot(predictions, y,'o')
 plt.xlim([1,7])
 plt.ylim([1,7])
-
-plt.subplot(2,2,2)
-predictions2 = lin_reg2.predict(poly_reg.fit_transform(insoleWeight2_X))
-mse = mean_squared_error(predictions2, insoleWeight2_y)
-print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
-plt.plot(predictions2, insoleWeight2_y, 'o')
-plt.title('InsoleWeight 2')
-plt.xlabel('Predicted Values')
-plt.ylabel('Target Values')
-plt.xlim([1,7])
-plt.ylim([1,7])
-
-plt.subplot(2,2,3)
-predictions = lin_reg2.predict(poly_reg.fit_transform(regular1_X))
-mse = mean_squared_error(predictions, regular1_y)
-print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
-plt.plot(predictions, regular1_y, 'o')
-plt.title('Regular 1')
-plt.xlabel('Predicted Values')
-plt.ylabel('Target Values')
-plt.xlim([1,7])
-plt.ylim([1,7])
-
-plt.subplot(2,2,4)
-predictions = lin_reg2.predict(poly_reg.fit_transform(regular2_X))
-mse = mean_squared_error(predictions, regular2_y)
-print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
-plt.plot(predictions, regular2_y, 'o')
-plt.title('Regular 2')
-plt.xlabel('Predicted Values')
-plt.ylabel('Target Values')
-plt.xlim([1,7])
-plt.ylim([1,7])
-
-from sklearn.cluster import KMeans
-kmeans = KMeans(n_clusters=2)
-kmeans_limp = kmeans.fit_predict(predictions1.reshape(-1,1))
-
-kmeans2 = KMeans(n_clusters=2)
-kmeans_regular = kmeans2.fit_predict(predictions.reshape(-1,1))
-
-
-print(kmeans.cluster_centers_)
-print(kmeans2.cluster_centers_)
-
+plt.xlabel('Predicted tibial acceleration')
+plt.ylabel('Measured tibial acceleration')
 plt.show()
+
+# plt.subplot(2,2,1)
+# predictions1 = lin_reg2.predict(poly_reg.fit_transform(insoleWeight1_X))
+# mse = mean_squared_error(predictions1, insoleWeight1_y)
+# print("The root mean squared error (RMSE) 1: {:.4f}".format(np.sqrt(mse)))
+# plt.plot(predictions1, insoleWeight1_y, 'o')
+# plt.title('InsoleWeight 1')
+# plt.xlabel('Predicted Values')
+# plt.ylabel('Target Values')
+# plt.xlim([1,7])
+# plt.ylim([1,7])
+
+# plt.subplot(2,2,2)
+# predictions2 = lin_reg2.predict(poly_reg.fit_transform(insoleWeight2_X))
+# mse = mean_squared_error(predictions2, insoleWeight2_y)
+# print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
+# plt.plot(predictions2, insoleWeight2_y, 'o')
+# plt.title('InsoleWeight 2')
+# plt.xlabel('Predicted Values')
+# plt.ylabel('Target Values')
+# plt.xlim([1,7])
+# plt.ylim([1,7])
+
+# plt.subplot(2,2,3)
+# predictions = lin_reg2.predict(poly_reg.fit_transform(regular1_X))
+# mse = mean_squared_error(predictions, regular1_y)
+# print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
+# plt.plot(predictions, regular1_y, 'o')
+# plt.title('Regular 1')
+# plt.xlabel('Predicted Values')
+# plt.ylabel('Target Values')
+# plt.xlim([1,7])
+# plt.ylim([1,7])
+
+# plt.subplot(2,2,4)
+# predictions = lin_reg2.predict(poly_reg.fit_transform(regular2_X))
+# mse = mean_squared_error(predictions, regular2_y)
+# print("The root mean squared error (RMSE) 2: {:.4f}".format(np.sqrt(mse)))
+# plt.plot(predictions, regular2_y, 'o')
+# plt.title('Regular 2')
+# plt.xlabel('Predicted Values')
+# plt.ylabel('Target Values')
+# plt.xlim([1,7])
+# plt.ylim([1,7])
+
+# from sklearn.cluster import KMeans
+# kmeans = KMeans(n_clusters=2)
+# kmeans_limp = kmeans.fit_predict(predictions1.reshape(-1,1))
+
+# kmeans2 = KMeans(n_clusters=2)
+# kmeans_regular = kmeans2.fit_predict(predictions.reshape(-1,1))
+
+
+# print(kmeans.cluster_centers_)
+# print(kmeans2.cluster_centers_)
+
+# plt.show()
 
 # print(np.shape(outputs))
 # print(np.shape(inputs))

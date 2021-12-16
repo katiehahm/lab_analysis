@@ -8,12 +8,15 @@ Nimpacts = length(impacts(:,1));
 
 acc_pks = zeros(Nimpacts,4); % cols: accX,accY,accZ peaks, whichfoot
 acc_pk_idx = zeros(Nimpacts,4); % cols: accX,accY,accZ peak idx, whichfoot
-for i=1:length(impacts(:,1))
+for i=1:Nimpacts
     heel_start_t = fsrTime(impacts(i,1));
     window_start = heel_start_t - window*offset;
     window_end = window_start + window;
     starti = findTindex(window_start,accTime);
     endi = findTindex(window_end,accTime);
+    if isempty(endi)
+        endi = length(accTime);
+    end
     RorLfoot = impacts(i,4);
     if RorLfoot == 1 % right 
         accX = accData(starti:endi,(Mfsr('Rheel')-1)*3 + 1);

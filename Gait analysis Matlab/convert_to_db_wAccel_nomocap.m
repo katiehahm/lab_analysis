@@ -3,7 +3,7 @@ close all
 filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\12-2-21\';
 
 % ################# change ########################
-intervention = 'insoleRweightL2'; % regular1 regular2 slow stiffRknee stiffLknee insoleRweightL1 insoleRweightL2
+intervention = 'thickbrace_fast'; % regular metal doufurt doufurt_fast thickbrace thickbrace_fast
 MCvalueSet = [3 4 5 6 7 8]; % order of Mocap left/right based on keyset
 FSRvalueSet = [1 2]; % order of FSR inputs based on keyset
 FSRkeySet = {'Lheel','Rheel'};
@@ -12,16 +12,11 @@ FSRkeySet = {'Lheel','Rheel'};
 % load 3 datasets
 load([filepath, intervention])
 load([filepath, intervention, '_fsr'])
-T = readtable([filepath, intervention, '_mocap']);
 
 % constants
 num_sensors = 4;
 Fs_pcb = 12800;
 Mfsr = containers.Map(FSRkeySet, FSRvalueSet);
-MCkeySet = {'Lx','Ly','Lz','Rx','Ry','Rz'};
-Mmocap = containers.Map(MCkeySet, MCvalueSet);
-
-[mocapT, mocapL, mocapR] = convertMocap(T, Mmocap);
 
 % for i = 239144:266129 % for error in fsr trigger
 %     Data(9,i) = -3;
@@ -32,7 +27,6 @@ Mmocap = containers.Map(MCkeySet, MCvalueSet);
 [pcbData, pcbTime] = clip_pcb_fromMocap(datas, times);
 
 % check this is correct. These numbers should be nearly the same:
-mocapT(end)
 fsrTime(end)
 pcbTime(end)
 
@@ -41,7 +35,7 @@ pcbTime(end)
 % don't need this for human subject testing 10/18/21
 figure; plot(pcbTime, pcbData(:,2)) % use this to see when end is
 %%
-clip_end = 66.2855; % delete data after this timestamp for pcb,fsr ##### change ####
+clip_end = 94.5; % delete data after this timestamp for pcb,fsr ##### change ####
 
 fsr_end = findTindex(clip_end,fsrTime);
 fsrTime = fsrTime(1:fsr_end);
@@ -55,13 +49,9 @@ pcb_end = findTindex(clip_end,pcbTime);
 pcbTime = pcbTime(1:pcb_end);
 pcbData = pcbData(1:pcb_end,:);
 
-mocap_end = findTindex(clip_end,mocapT);
-mocapT = mocapT(1:mocap_end);
-mocapR = mocapR(1:mocap_end,:);
-mocapL = mocapL(1:mocap_end,:);
 
 %%
-clip_start = 1.1; % delete data before this timestamp for pcb,fsr ##### change ####
+clip_start = 1.4; % delete data before this timestamp for pcb,fsr ##### change ####
 
 fsr_start = findTindex(clip_start,fsrTime);
 fsrTime = fsrTime(fsr_start:end);
@@ -74,11 +64,6 @@ accData = accData(acc_start:end,:);
 pcb_start = findTindex(clip_start,pcbTime);
 pcbTime = pcbTime(pcb_start:end);
 pcbData = pcbData(pcb_start:end,:);
-
-mocap_start = findTindex(clip_start,mocapT);
-mocapT = mocapT(mocap_start:end);
-mocapR = mocapR(mocap_start:end,:);
-mocapL = mocapL(mocap_start:end,:);
 %% extracting data 9/9/21
 % overall plot for visual check
 % plot_3data(pcbData,pcbTime,fsrData,fsrTime,mocapR,mocapL,mocapT,Mfsr)
@@ -88,16 +73,16 @@ filt_pcbD = lpf_data(pcbData);
 
 % finding footfalls based on fsr heel data
 % [impacts, Rheel,- Lheel, Rtoe, Ltoe] = findimpacts_fsr(fsrTime,fsrData,Mfsr);
-L_dist = 250; % min distance between heel peaks
+L_dist = 180; % min distance between heel peaks
 R_dist = 180;
-min_threshL = 15; % value between peaks threshold, if not lower than this then omit peak
-min_threshR = 15;
+min_threshL = 5; % value between peaks threshold, if not lower than this then omit peak
+min_threshR = 5;
 
 impacts = findimpacts_fsr_accel(fsrTime,fsrData,Mfsr,L_dist,R_dist,min_threshL,min_threshR);
 
 %% fix small errors in impacts 11/5/21
-heel_start_wrong = [357,10375,13023,14145,15408,16241]; % these need to be same length
-heel_start_right = [344,10364,13011,14132,15397,16230];
+heel_start_wrong = [2561,13969,4670,6765,8992,18025,26150]; % these need to be same length
+heel_start_right = [2786,13959,4604,7031,9188,18010,26348];
 
 heel_pk_wrong = []; % index, these need to be same length
 heel_pk_right = [];
@@ -107,7 +92,7 @@ impacts = manual_fix_fsr(impacts,fsrData,Mfsr,heel_start_wrong,heel_start_right,
 %% extract turning points 11/19/21
 
 pkdist = 3000;
-pkprom = 0.0007;
+pkprom = 0.001;
 figure;
 findpeaks(filt_pcbD(:,1),'MinPeakDistance',pkdist,'MinPeakProminence',pkprom)
 [pks, locs] = findpeaks(filt_pcbD(:,1),'MinPeakDistance',pkdist,'MinPeakProminence',pkprom);
@@ -120,7 +105,7 @@ omit_pks = [];
 start_walk = [pcbTime(locs(1))];
 end_walk = [];
 
-turn_threshold = 1.2; % peaks are within this # of datapoints 
+turn_threshold = 1; % peaks are within this # of datapoints 
 for i = 2:length(locs)
     currT = pcbTime(locs(i));
     prevT = pcbTime(locs(i-1));
@@ -225,12 +210,9 @@ end
 
 %% pcb and mocap extract
 
-window_width = Fs*0.3; % shaking lasts < N seconds
-offset = 0.08; % start window N behind fsr start
+window_width = Fs*0.35; % shaking lasts < N seconds
+offset = 0.1; % start window N behind fsr start
 [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(window_width,offset,impacts,fsrTime,pcbTime,filt_pcbD,num_sensors,true);
-
-% mocap extract
-[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impacts,fsrTime,mocapT,mocapR,mocapL,true);
 
 %% fix small errors in pcb 11/6/21
 arrival_wrong = [NaN,NaN,NaN,8.10383;NaN,NaN,NaN,86.8053]; % these are matrixes, 4 cols for sensorN and each row is a different wrong impact
@@ -238,16 +220,6 @@ arrival_right = [NaN,NaN,NaN,7.98969;NaN,NaN,NaN,87.3008];
 peak_idx_right = [NaN,NaN,NaN,7.99328;NaN,NaN,NaN,87.3051];
 
 [arrival_idx,peak_idx,peak_mag] = manual_fix_pcb(arrival_wrong,arrival_right,peak_idx_right,pcbTime,arrival_idx,peak_idx,peak_mag,filt_pcbD);
-
-
-%% fix small errors in mocap 11/5/21
-r_wrong = []; % these need to be same length
-r_right = [];
-
-l_wrong = [10255,15125,21727]; % index, these need to be same length
-l_right = [10365,15223,21825];
-
-[extracted_pts_R,extracted_pts_L,coordinates] = manual_fix_mocap(r_wrong,r_right,l_wrong,l_right,mocapR,mocapL,extracted_pts_R,extracted_pts_L,coordinates,whichfoot);
 
 %% extract accel data 11/22/21
 % gets the peak of abs value of accelerometer values for x,y,z directions
@@ -258,7 +230,7 @@ offset = 0.25;
 [acc_pks,acc_pk_idx] = find_accel_impacts(impacts,fsrTime,window,offset,accTime,accData,fsrData,Mfsr);
 
 %% saving data to matlab and excel 9/9/21
-processedfilepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\';
+processedfilepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\12-2-21\ProcessedData\';
 filename = [processedfilepath, intervention];
 % for findimpacts_fsr:
 % save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
@@ -266,10 +238,10 @@ filename = [processedfilepath, intervention];
 %     'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
 
 % for findimpacts_fsr_compact:
+whichfoot = impacts(:,4);
 save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
     'fsrTime','fsrData','impacts', ...
-    'acc_pks','acc_pk_idx',...
-    'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
+    'acc_pks','acc_pk_idx','whichfoot') % walk_segments
 disp(append("Saved as ", filename))
 
 % EXCEL

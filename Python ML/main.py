@@ -33,8 +33,8 @@ from sklearn.ensemble import RandomForestRegressor
 
 
 from tryGBR import GBR
-from tryClassifierCV import tryClassifierCV
-from tryClassifierSingleCV import tryClassifierSingleCV2
+from tryClassifierCV import tryClassifierCV, tryClassifierSingleCV
+# from tryClassifierSingleCV import tryClassifierSingleCV
 from GBRtest import GBRtest
 from RFtest import RFtest
 from LinearRegtest import LinearRegtest
@@ -42,7 +42,7 @@ from LinearRegtest import LinearRegtest
 
 # read csv file
 # data = pd.read_csv('06-04_06-10_finaldata.csv',header=None)
-data = pd.read_csv('12-1-21_localization_dataset.csv',header=None)
+data = pd.read_csv('12-5-21_localization_walkstarts.csv',header=None)
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -55,7 +55,7 @@ nrows = sh[0]
 ncols = sh[1]
 
 # define inputs/outputs
-outputs = dataM[:,0:1]
+outputs = dataM[:,0]
 inputs = dataM[:,1:]
 inputsNorm = preprocessing.normalize(inputs, norm='l1')
 
@@ -96,7 +96,7 @@ param_distributions_r = {
 
 # print(model_g.get_params().keys())
 
-tryClassifierSingleCV(inputs, outputs, model_g, param_distributions_g, 5, 'GBR', k_fold)
+tryClassifierSingleCV(inputs, outputs, model_g, param_distributions_g, 25, 'GBR', k_fold)
 # GBRtest(inputs, outputsM, k_fold)
 # RFtest(inputs, outputsM, k_fold)
 # LinearRegtest(inputs, outputsM, k_fold)

@@ -136,11 +136,11 @@ plot(differences,'b.')
 
 clear all
 close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\'; 
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\12-2-21\ProcessedData\'; 
 % subj = '1'; % number of subject
 % intervention = 'normal1';
 % takes = {'normal1', 'slow', 'insole', 'weight', 'count','normal2'};
-takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
+takes = {'regular', 'metal', 'doufurt', 'doufurt_fast', 'thickbrace', 'thickbrace_fast'};
 GMmodels = zeros(length(takes),9);
 
 for take = 1:length(takes)
@@ -155,7 +155,8 @@ for take = 1:length(takes)
     % for extract_straight_paths:
     differences = [];
     for i = 2:length(whichfoot)
-        if walk_segments(i) ~= -1 % not the start of episode
+%         if walk_segments(i) ~= -1 % not the start of episode
+        if fsrTime(impacts(i,1))-fsrTime(impacts(i-1,1)) < 1 % not the start of episode
             curr = min(arrival_idx(i,1:4));
             prev = min(arrival_idx(i-1,1:4));
             differences(end+1) = (curr - prev)/Fs;

@@ -128,6 +128,14 @@ fixing_subj3_fsr_insole.m (11/22/21)
 find_accel_impacts.m (11/22/21)
 	Used to find the peak acceleration for each impact and its indeces
 
+experiment3_convert2db.m (12/13/21)
+	First file to run for experiments 12/13/21-12/16/21 (right before winter break)
+	Modified from convert to db with accel file
+
+experiment3_analysis.m (12/13/21)
+	Part 2 of experiment 3 run
+	Real step time, step time GMM, localization, GRF, 
+
 
 Data
 ===============================================
@@ -150,6 +158,9 @@ ProcessedData:
 	Last dataset in this folder contains accelerometer data from fsr
 	Details are at the back of green notebook
 
+12-2-21:
+	Testing different knee braces
+
 Python
 ================================================
 magnitude_predict.py (8/19/21)
@@ -162,6 +173,24 @@ to run: anaconda prompt and type python main.py
 	for 11-21-21 dataset
 
 
-11-30-21_localization_dataset.csv 
+12-1-21_localization_dataset.csv 
 	xcoord, curr mag/prev mag, curr energy/prev energy, prev x
 	for 11-21-21 dataset
+
+12-1-21_localization_dataset2.csv 
+	xcoord, arrival index, curr mag, curr energy, curr mag/prev mag, curr energy/prev energy, prev x
+	for 11-21-21 dataset
+
+12-6-21_localization_dataset3.csv
+	first column indicates 0 for train, 1 for train
+	to use for recursive localization
+
+12-6-21_trackinglocalization_1/2/3/4quartile.csv
+	Splits train/test to 0 or 1 value in 1st column
+	Uses 25% of data for test, 4 different files
+	Used to make predicted location dataset for GRF analysis
+
+12-7-21_grf_dataset_predictedloc.csv
+	Contains grf features based on predicted locations
+	Doesn't quite work, the rmse is 2.8 rather than 0.6
+	But if this works decently, then this is the worse case scenario

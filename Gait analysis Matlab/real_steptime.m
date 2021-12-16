@@ -5,10 +5,10 @@
 % clear all
 close all
 % data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\ProcessedData\';
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\ProcessedData\';
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\12-2-21\ProcessedData\';
 % subj = '1'; % number of subject
 % takes = {'normal1', 'slow', 'insole', 'weight', 'count','normal2'};
-takes = {'regular1', 'regular2', 'slow', 'stiffRknee', 'stiffLknee', 'insoleRweightL1', 'insoleRweightL2'};
+takes = {'regular', 'metal', 'doufurt', 'doufurt_fast', 'thickbrace', 'thickbrace_fast'};
 
 % Fs = 518.5;
 Fs = 296.3;
@@ -35,7 +35,8 @@ for take = 1:length(takes)
 
     for i = 2:length(whichfoot)
         % this if statement is for extract_straight_paths
-        if walk_segments(i) ~= -1 % not the start of episode
+%         if walk_segments(i) ~= -1 % not the start of episode
+        if fsrTime(impacts(i,1))-fsrTime(impacts(i-1,1)) < 1 % not the start of episode
             if whichfoot(i) == 1 % right foot
                 if whichfoot(i-1) == 0 % left foot
                     left_right_diff(end+1) = impacts(i,1)-impacts(i-1,1);
