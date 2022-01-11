@@ -21,7 +21,7 @@ from sklearn.model_selection import KFold
 # outputs a csv with predicted locations for every impact
 
 # read csv file
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment3/ProcessedData/ExcelData/subj1_localization.csv',header=None)
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment3/ProcessedData/ExcelData/subj4_localization.csv',header=None)
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -106,7 +106,7 @@ mse_all = mean_squared_error(yTestAll, yPredictAll)
 print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
 
 DF = pd.DataFrame(finalPredictions)
-DF.to_csv("trackingloc_subj1_results.csv") # CHANGE ***********************************
+DF.to_csv("trackingloc_subj4_results.csv") # CHANGE ***********************************
 
 fig = plt.figure(figsize=(6,6))
 plt.plot(yPredictAll,yTestAll,'o')

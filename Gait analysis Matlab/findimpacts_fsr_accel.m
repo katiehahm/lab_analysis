@@ -5,7 +5,7 @@ function [impacts] = findimpacts_fsr_accel(fsrTime,fsrData,Mfsr,L_dist,R_dist,mi
 % impacts = [heel start idx, heel pk idx, heel pk mag, 1(R) or 0(L)]
 % 9/15/21
 
-[pksR,locsR,~,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
+[pksR,locsR,~,~] = findpeaks(fsrData(:,Mfsr('Rheel')),'MinPeakProminence',8,'Annotate','extents','MinPeakDistance',R_dist); % 4th element is prominence
 [pksL,locsL,~,~] = findpeaks(fsrData(:,Mfsr('Lheel')),'MinPeakProminence',9,'Annotate','extents','MinPeakDistance',L_dist);
 
 % filter out peaks that don't have heel go close to 0 in between

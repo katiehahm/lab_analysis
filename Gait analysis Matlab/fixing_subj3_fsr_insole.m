@@ -1,9 +1,9 @@
 % this file is used to correct it when fsr process didn't work to .mat
 % so the file was save to .xlsx instead
 
-filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment2\11_21_21\';
-name = [filename,'stiffLknee_fsr_excel.csv'];
-load([filename,'stiffLknee_fsr_error'])
+filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\Subj 2\subj2_';
+name = [filename,'fsr_regular2_csv.csv'];
+load([filename,'fsr_regular2_mat'])
 
 T = readtable(name);
 A = table2array(T);
@@ -19,5 +19,5 @@ Data(:,8) = A(:,16);
 Data(:,9) = A(:,18);
 Data = transpose(Data);
 
-filename = [filename,'stiffLknee_fsr'];
+filename = [filename,'fsr_regular2'];
 save(filename, 'Data','Time','Channels','Fs')

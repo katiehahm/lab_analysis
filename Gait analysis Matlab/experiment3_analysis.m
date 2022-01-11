@@ -1,8 +1,46 @@
+%% ordering impacts 12/19/21
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '2'; % number of subject
+takes = {'regular1', 'brace1','weight1','weight2','regular2'};
+
+featureV = zeros(1,24);
+for take = 1:length(takes)
+    intervention = char(takes(take));
+    filename = [data_root_katie,'subj',subj,'_',intervention];
+    load(string(filename))
+    
+    [~,sortI] = sort(arrival_idx(:,1));
+    
+    acc_pk_idx = acc_pk_idx(sortI,:);
+    acc_pks = acc_pks(sortI,:);
+    arrival_idx = arrival_idx(sortI,:);
+    coordinates = coordinates(sortI,:);
+    energy_envelope = energy_envelope(sortI,:);
+    energy_squared = energy_squared(sortI,:);
+    % EXTRACTED_PTS ARE NOT SORTED
+    impacts = impacts(sortI,:);
+    peak_idx = peak_idx(sortI,:);
+    peak_mag = peak_mag(sortI,:);
+    walk_edges = walk_edges(sortI);
+    whichfoot = whichfoot(sortI);
+    
+    save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
+    'fsrTime','fsrData','impacts', ...
+    'acc_pks','acc_pk_idx',...
+    'mocapT','mocapR','mocapL','extracted_pts_R','extracted_pts_L','coordinates','whichfoot')
+%     save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
+%     'fsrTime','fsrData','impacts', ...
+%     'acc_pks','acc_pk_idx',...
+%     'mocapT','mocapR','mocapL')
+    disp(append("Saved as ", filename))
+end
+
 %% add start/end marker for all takes 12/13/21
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
+subj = '2'; % number of subject
+takes = {'regular1', 'brace1', 'brace2','weight2','regular2'};
 
 Fs = 296.3;
 
@@ -20,7 +58,7 @@ for take = 1:length(takes)
     for i = 2:impactN
         curr_i = fsrTime(impacts(i,1));
         prev_i = fsrTime(impacts(i-1,1));
-        if curr_i - prev_i > 1.5 % segments are separated by at least 1.5 secs
+        if curr_i - prev_i > 2 % segments are separated by at least 1.5 secs
             walk_edges(i) = -1;
             walk_edges(i-1) = 1;
         end
@@ -40,11 +78,69 @@ for take = 1:length(takes)
     plot(fsrTime(impacts(lasts,1)),0,'b.','MarkerSize',12)
 end
 
+%% energy extraction 12/13/21
+
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '2'; % number of subject
+takes = {'regular1', 'brace1', 'weight1','weight2','regular2'};
+Fs = 12800;
+noise_window = Fs*0.2; % take the 0.2s before the arrival of impact to get noise
+
+for take = 1:length(takes)
+    intervention = char(takes(take));
+    filename = [data_root_katie,'subj',subj,'_',intervention];
+    load(string(filename))
+    
+    energy = zeros(length(arrival_idx),4);
+    energy_envelope = zeros(length(arrival_idx),4);
+    window_end_idx = zeros(length(arrival_idx),4);
+    ups = zeros(length(arrival_idx),4);
+    for j = 1:4
+        for i = 1:length(arrival_idx)
+            if i == length(arrival_idx)
+                window_end = length(filt_pcbD);
+            else
+                window_end = arrival_idx(i+1,j);
+            end
+            curr_i = arrival_idx(i,j);
+            window = filt_pcbD(curr_i:window_end,j);
+            noise_thresh = max(abs(filt_pcbD(curr_i - noise_window:curr_i-noise_window*0.1)))+0.0000005;
+            if ~isempty(window)
+%                 [up,lo] = envelope(abs(window),300,'rms');
+                [up,lo] = envelope(window,300,'peak');
+                indeces = find(up < noise_thresh);
+                while isempty(indeces) % keep raising threshold until find the signal end
+                    noise_thresh = noise_thresh + 0.000001;
+                    indeces = find(up < noise_thresh);
+                end
+                window = window(1:indeces(1));
+                window_end_idx(i,j) = indeces(1) + curr_i;
+                window_energy = sum(abs(window).^2);
+                energy_envelope(i,j) = sum(up(1:indeces(1)).^2);
+                energy(i,j) = window_energy;
+            end
+        end
+
+    end
+    energy_squared = energy;
+    save(filename,'energy_squared','energy_envelope','-append')
+    
+    findzeros = find(energy_squared == 0);
+    if ~isempty(findzeros)
+        disp("There is a zero in energy matrix")
+        take
+        findzeros
+    end
+end
+
+
+
 %% real step time 12/13/21
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
+subj = '2'; % number of subject
+takes = {'regular1', 'brace1', 'brace2', 'weight1','weight2','regular2'};
 
 Fs = 296.3;
 
@@ -58,14 +154,14 @@ for take = 1:length(takes)
     left_right_diff = [];
     right_left_diff = [];
 
-    for i = 2:length(whichfoot)
+    for i = 2:length(walk_edges)
         if walk_edges(i) ~= -1 % not the start of episode
-            if whichfoot(i) == 1 % right foot
-                if whichfoot(i-1) == 0 % left foot
+            if impacts(i,4) == 1 % right foot
+                if impacts(i-1,4) == 0 % left foot
                     left_right_diff(end+1) = impacts(i,1)-impacts(i-1,1);
                 end
-            elseif whichfoot(i) == 0 % left foot
-                if whichfoot(i-1) == 1 % right foot
+            elseif impacts(i,4) == 0 % left foot
+                if impacts(i-1,4) == 1 % right foot
                     right_left_diff(end+1) = impacts(i,1)-impacts(i-1,1);
                 end
             end
@@ -79,6 +175,16 @@ for take = 1:length(takes)
     left_right_std = std(left_right_diff);
     right_left_mean = mean(right_left_diff);
     right_left_std = std(right_left_diff);
+    
+    % deleting outliers: over 2 std
+    left_min = left_right_mean - 2*left_right_std;
+    left_max = left_right_mean + 2*left_right_std;
+    left_idx = find(left_right_diff > left_max | left_right_diff < left_min);
+    left_right_diff(left_idx) = [];
+    right_min = right_left_mean - 2*right_left_std;
+    right_max = right_left_mean + 2*right_left_std;
+    right_idx = find(right_left_diff > right_max | right_left_diff < right_min);
+    right_left_diff(right_idx) = [];
     
     all_params(take,:) = [left_right_mean, right_left_mean, left_right_std, right_left_std];
     
@@ -126,8 +232,8 @@ all_params
 
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
+subj = '2'; % number of subject
+takes = {'regular1', 'brace1', 'brace2','weight1', 'weight2','regular2'};
 GMmodels = zeros(length(takes),9);
 
 for take = 1:length(takes)
@@ -137,7 +243,7 @@ for take = 1:length(takes)
     Fs = 12800;
 
     differences = [];
-    for i = 2:length(whichfoot)
+    for i = 2:length(walk_edges)
         if walk_edges(i) ~= -1 % not the start of episode
             curr = min(arrival_idx(i,1:4));
             prev = min(arrival_idx(i-1,1:4));
@@ -147,11 +253,11 @@ for take = 1:length(takes)
     mu=mean(differences);
     sig = std(differences);
     
-%     % extracting outliers (step lengths that are too large)
-%     % that are most likely bc of extraight_straight_paths
-%     outliers = find(differences>(mu*1.5) );
-%     differences(outliers) = [];
-%     differences(find(differences == 0)) = [];
+    % extracting outliers (step lengths that are too large)
+    % that are most likely bc of extraight_straight_paths
+    outliers = find(differences>(mu+1.5*sig) | differences<(mu-1.5*sig));
+    differences(outliers) = [];
+    differences(find(differences == 0)) = [];
     
 %     disp(intervention)
 %     GMModel = fitgmdist(transpose(differences),2, 'RegularizationValue',0.1)
@@ -162,7 +268,7 @@ for take = 1:length(takes)
     pcomponents = [1/2,1/2];
 %     S = struct('mu',mu_s,'Sigma',sigma_s,'ComponentProportion',pcomponents);
 %     GM = fitgmdist(transpose(differences),2,'Start',S);
-    GM = fitgmdist(transpose(differences),2,'RegularizationValue',0.00001);
+    GM = fitgmdist(transpose(differences),2,'RegularizationValue',0.000001);
     proportion = GM.ComponentProportion;
     mu = GM.mu;
     sig = GM.Sigma;
@@ -212,7 +318,7 @@ y = [max_real,max_gmm,min_real,min_gmm];
 b = bar(y);
 set(gca,'xticklabel',takes)
 legend('Larger real step','Larger predicted step','Shorter real step','Shorter predicted step')
-title('Subj 1 predicted and real step times for shorter and longer step')
+title('Subj 2 predicted and real step times for shorter and longer step')
 
 % for point figure
 % figure;
@@ -235,8 +341,8 @@ title('Subj 1 predicted and real step times for shorter and longer step')
 clear all
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
+subj = '4'; % number of subject
+takes = {'regular1', 'brace1', 'brace2', 'weight2','regular2'};
 
 all_params = zeros(length(takes),4);
 accel_bar_data = zeros(length(takes),2);
@@ -248,10 +354,10 @@ for take = 1:length(takes)
     
     left_acc = [];
     right_acc = [];
-    for i = 1:length(whichfoot)
-        if whichfoot(i) == 1 % right foot
+    for i = 1:length(walk_edges)
+        if impacts(i,4) == 1 % right foot
             right_acc(end+1) = acc_pks(i,2);
-        elseif whichfoot(i) == 0 % left foot
+        elseif impacts(i,4) == 0 % left foot
             left_acc(end+1) = acc_pks(i,2);
         end
     end
@@ -267,68 +373,14 @@ set(gca,'XTickLabel',takes(1:end));
 title('Average tibial acceleration of L and R legs')
 legend('Left foot','Right foot')
 
-%% energy extraction 12/13/21
 
-close all
-data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
-Fs = 12800;
-noise_window = Fs*0.2; % take the 0.2s before the arrival of impact to get noise
-
-for take = 1:length(takes)
-    intervention = char(takes(take));
-    filename = [data_root_katie,'subj',subj,'_',intervention];
-    load(string(filename))
-    
-    energy = zeros(length(arrival_idx),4);
-    energy_envelope = zeros(length(arrival_idx),4);
-    window_end_idx = zeros(length(arrival_idx),4);
-    ups = zeros(length(arrival_idx),4);
-    for j = 1:4
-        for i = 1:length(arrival_idx)
-            if i == length(arrival_idx)
-                window_end = length(filt_pcbD);
-            else
-                window_end = arrival_idx(i+1,j);
-            end
-            curr_i = arrival_idx(i,j);
-            window = filt_pcbD(curr_i:window_end,j);
-            noise_thresh = max(abs(filt_pcbD(curr_i - noise_window:curr_i-noise_window*0.1)))+0.0000005;
-            if ~isempty(window)
-%                 [up,lo] = envelope(abs(window),300,'rms');
-                [up,lo] = envelope(window,300,'peak');
-                indeces = find(up < noise_thresh);
-                while isempty(indeces) % keep raising threshold until find the signal end
-                    noise_thresh = noise_thresh + 0.000001;
-                    indeces = find(up < noise_thresh);
-                end
-                window = window(1:indeces(1));
-                window_end_idx(i,j) = indeces(1) + curr_i;
-                window_energy = sum(abs(window).^2);
-                energy_envelope(i,j) = sum(up(1:indeces(1)).^2);
-                energy(i,j) = window_energy;
-            end
-        end
-
-    end
-    energy_squared = energy;
-    save(filename,'energy_squared','energy_envelope','-append')
-    
-    findzeros = find(energy_squared == 1);
-    if ~isempty(findzeros)
-        disp("There is a zero in energy matrix")
-        take
-        findzeros
-    end
-end
 
 %% localization csv 12/14/21
 
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '1'; % number of subject
-takes = {'regular1', 'brace1', 'brace2', 'weight1', 'weight2', 'regular2'};
+subj = '4'; % number of subject
+takes = {'regular1', 'brace1','brace2','weight2','regular2'};
 
 featureV = zeros(1,24);
 for take = 1:length(takes)
@@ -375,4 +427,125 @@ end
 featureV(1,:) = [];
 filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\ExcelData\subj',subj,'_localization.csv'];
 writematrix(featureV,filename) 
-% then run recursive_localization
+% then run recursive_localization.py
+
+%% using recursive localization results to make grf excel 12/20/21
+
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '4'; % number of subject
+takes = {'regular1', 'brace1','brace2','weight2','regular2'};
+
+T = readtable([data_root_katie, 'ExcelData\trackingloc_subj',subj,'_results']);
+A = table2array(T);
+real_loc = A(:,1);
+predict_loc = A(:,2);
+
+count = 1;
+
+s1 = [-3.590,-3.343];
+s2 = [-3.580,2.61];
+s3 = [3.639,2.11];
+s4 = [3.650,-3.412];
+
+featureV = zeros(1,14);
+for take = 1:length(takes)
+    intervention = char(takes(take));
+    filename = [data_root_katie,'subj',subj,'_',intervention];
+    load(string(filename))
+    
+    for i = 1:length(impacts)
+        if round(coordinates(i,1)/1000,2) == round(real_loc(count),2)
+            xcoord = predict_loc(count);
+            ycoord = coordinates(i,2);
+
+            dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
+            dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
+            dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
+            dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
+            
+            accY = acc_pks(i,2);
+
+            % take #, acc, dist 1-4, pk mag 1-4, energy 1-4
+            feature = [take,abs(accY),dist1,dist2,dist3,dist4,peak_mag(i,:),energy_squared(i,:)]; %last two are just to check
+            featureV(end+1,:) = feature;
+            count = count + 1;
+        else
+            disp("wrong here")
+            take
+            i
+        end
+    end
+end
+featureV(1,:) = [];
+filename = [data_root_katie, 'ExcelData\grf_features_subj',subj,'.csv'];
+writematrix(featureV,filename) 
+
+% then run grf_wpredictedloc.py
+
+%% use grf predicted results to show difference with kmeans
+
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '1';
+T = readtable([data_root_katie, 'ExcelData\grf_results_GBR_regularweightonly_subj',subj]);
+A = table2array(T);
+real_grf = A(:,2);
+predict_grf = A(:,3);
+take = A(:,1);
+
+count = 1;
+
+% these are indeces
+N = length(nonzeros(take));
+N = round(N/4);
+
+regular1 = predict_grf(1:N);
+regular2 = predict_grf(N+1:N*2);
+weight1 = predict_grf(N*2+1:N*3);
+weight2 = predict_grf(N*3+1:N*4);
+
+real_reg1 = real_grf(1:N);
+real_reg2 = real_grf(N+1:N*2);
+real_w1 = real_grf(N*2+1:N*3);
+real_w2 = real_grf(N*3+1:N*4);
+
+[~,regular1_C] = kmeans(regular1,2)
+[~,regular2_C] = kmeans(regular2,2)
+[~,weight1_C] = kmeans(weight1,2)
+[~,weight2_C] = kmeans(weight2,2)
+
+xmax = 5;
+
+figure;
+plot(regular1,real_reg1,'.')
+title('Regular 1 GRF prediction')
+xlim([1 xmax])
+ylim([1 xmax])
+xlabel('Predicted GRF')
+ylabel('Real GRF')
+
+figure;
+plot(regular2,real_reg2,'.')
+title('Regular 2 GRF prediction')
+xlim([1 xmax])
+ylim([1 xmax])
+xlabel('Predicted GRF')
+ylabel('Real GRF')
+
+figure;
+plot(weight1,real_w1,'.')
+title('Weight 1 GRF prediction')
+xlim([1 xmax])
+ylim([1 xmax])
+xlabel('Predicted GRF')
+ylabel('Real GRF')
+
+figure;
+plot(weight2,real_w2,'.')
+title('Weight2 GRF prediction')
+xlim([1 xmax])
+ylim([1 xmax])
+xlabel('Predicted GRF')
+ylabel('Real GRF')
+

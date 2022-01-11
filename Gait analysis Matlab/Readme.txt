@@ -136,6 +136,9 @@ experiment3_analysis.m (12/13/21)
 	Part 2 of experiment 3 run
 	Real step time, step time GMM, localization, GRF, 
 
+experiment3_makefigures.m (12/21/21)
+	scripts to make figures in paper
+
 
 Data
 ===============================================
