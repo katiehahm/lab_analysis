@@ -139,6 +139,9 @@ experiment3_analysis.m (12/13/21)
 experiment3_makefigures.m (12/21/21)
 	scripts to make figures in paper
 
+armax_TA_estimation.m (1/12/22)
+	Uses armax coeffs and gets energy, etc. from armax results to estimate TA
+
 
 Data
 ===============================================

@@ -1,3 +1,26 @@
+N = length(whichfoot);
+for i = 9:10
+    % just sensor 1
+    clip = filt_pcbD(arrival_idx(i,1):arrival_idx(i,1)+2560,1); % 0.5s window
+    clip_d = iddata(clip,[],0.000078125); % sample time is 0.5
+    na = 500;
+    nc = 100;
+%     sys = armax(clip_d,[na nc]);
+    sys = ar(clip_d, na);
+    figure; compare(clip_d, sys)
+end
+
+%%
+x = linspace(0,10,100);
+y = sin(x);
+y = y.';
+data = iddata(y,[],0.1);
+na = 2;
+nc = 1;
+sys = armax(data, [na nc]);
+figure; compare(data, sys)
+
+%%
 %% for experiments 12/13/21-12/16/21 initial file to run
 
 clear all
@@ -225,7 +248,7 @@ offset = 0.1; % start window N behind fsr start
 [arrival_idx, peak_idx, peak_mag] = findimpacts_pcb(window_width,offset,impacts,fsrTime,pcbTime,filt_pcbD,num_sensors,true);
 
 % mocap extract
-[coordinates] = findimpacts_mocap2pp(impacts,fsrTime,mocapT,allmocap,true);
+[extracted_pts_R, extracted_pts_L, coordinates, whichfoot] = findimpacts_mocap(impacts,fsrTime,mocapT,mocapR,mocapL,true);
 
 %% fix small errors in pcb 11/6/21
 arrival_wrong = [13.7388,13.7409,13.7386,13.7367]; % these are matrixes, 4 cols for sensorN and each row is a different wrong impact

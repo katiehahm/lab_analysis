@@ -303,15 +303,11 @@ real_reg2 = real_grf(N+1:N*2);
 real_w1 = real_grf(N*2+1:N*3);
 real_w2 = real_grf(N*3+1:N*4);
 
-[reg_idx,regular1_C] = kmeans(regular1,2);
-[~,regular2_C] = kmeans(regular2,2);
-[weight_idx,weight1_C] = kmeans(weight1,2);
-[~,weight2_C] = kmeans(weight2,2);
+[~,regular1_C] = kmeans(regular1,2)
+[~,regular2_C] = kmeans(regular2,2)
+[~,weight1_C] = kmeans(weight1,2)
+[~,weight2_C] = kmeans(weight2,2)
 
-reg_idx1 = find(reg_idx == 1);
-reg_idx2 = find(reg_idx == 2);
-weight_idx1 = find(weight_idx == 1);
-weight_idx2 = find(weight_idx == 2);
 
 takes = {'regular1','weight1','weight2','regular2'};
 
@@ -341,7 +337,6 @@ accel_bar_data
 
 xmax = 3.5;
 
-% old plots
 figure;
 plot(regular1,real_reg1,'k.')
 hold on
@@ -367,38 +362,6 @@ xlabel('Predicted GRF')
 ylabel('Real GRF')
 legend('TA','Leg 1 mean','Leg 2 mean')
 set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',16)
-
-% new plots 2/14/22 (for com mtg)
-figure;
-plot(regular1(reg_idx1),real_reg1(reg_idx1),'r.')
-hold on
-plot(regular1(reg_idx2),real_reg1(reg_idx2),'b.')
-plot(min(regular1_C),min(accel_bar_data(1,:)),'kx','MarkerSize',20,'LineWidth',3)
-plot(max(regular1_C),max(accel_bar_data(1,:)),'k*','MarkerSize',20,'LineWidth',3)
-plot(1:0.01:xmax,1:0.01:xmax,'k--')
-title('Regular walking TA prediction performance')
-xlim([1 xmax])
-ylim([1 xmax])
-xlabel('Predicted TA')
-ylabel('Real TA')
-legend('Cluster 1','Cluster 2','Cluster 1 centroid','Cluster 2 centroid')
-set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',16)
-
-figure;
-plot(weight1(weight_idx1),real_w1(weight_idx1),'r.')
-hold on
-plot(weight1(weight_idx2),real_w1(weight_idx2),'b.')
-plot(min(weight1_C),min(accel_bar_data(2,:)),'kx','MarkerSize',20,'LineWidth',3)
-plot(max(weight1_C),max(accel_bar_data(2,:)),'k*','MarkerSize',20,'LineWidth',3)
-plot(1:0.01:xmax,1:0.01:xmax,'k--')
-title('Walking with weight TA prediction performance')
-xlim([1 xmax])
-ylim([1 xmax])
-xlabel('Predicted TA')
-ylabel('Real TA')
-legend('Cluster 1','Cluster 2','Cluster 1 centroid','Cluster 2 centroid')
-set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',16)
-
 
 
 %% testing if step time data is normally distributed with qq plot 2/1/22
@@ -498,8 +461,7 @@ scaled_means
 std = [0.0005, 0.0002, 0.0006, 0.0008];
 means = [0.5419, 0.5905, 0.5489, 0.6491];
 pptions = [0.8763, 0.1237, 0.5441, 0.4559];
-scaled_means = [0.5532, 0.5426, 0.5533, 0.6447];
-
+scaled = [0.5532, 0.5426, 0.5533
 sort_diff1 = sort(differences1);
 sort_diff2 = sort(differences2);
 
