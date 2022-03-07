@@ -39,8 +39,8 @@ end
 %% add start/end marker for all takes 12/13/21
 close all
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
-subj = '2'; % number of subject
-takes = {'regular1', 'brace1', 'brace2','weight2','regular2'};
+subj = '3'; % number of subject
+takes = {'regular1', 'brace1', 'brace2','weight1','weight2','regular2'};
 
 Fs = 296.3;
 
@@ -103,7 +103,7 @@ for take = 1:length(takes)
             else
                 window_end = arrival_idx(i+1,j);
             end
-            curr_i = arrival_idx(i,j);
+            curr_i = arrival_idx(i,j); % 3/6/22 FIX THIS beg of energy env is usually 0, look at get_impact_window!!!!!!!!!!!!!!!!!
             window = filt_pcbD(curr_i:window_end,j);
             noise_thresh = max(abs(filt_pcbD(curr_i - noise_window:curr_i-noise_window*0.1)))+0.0000005;
             if ~isempty(window)
@@ -549,3 +549,77 @@ ylim([1 xmax])
 xlabel('Predicted GRF')
 ylabel('Real GRF')
 
+%% creating step time excel plots for GMM_derivation.py 2/28/22
+
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '3'; % number of subject
+takes = {'regular1','brace1', 'brace2', 'weight1','weight2','regular2'};
+
+Fs = 296.3;
+
+all_params = zeros(length(takes),4); % stores left_right mean, std, right_left mean, std
+featuresV = [0,0,0]; % take number, step time, right or left label
+
+for take = 1:length(takes)
+    intervention = char(takes(take));
+    filename = [data_root_katie,'subj',subj,'_',intervention];
+    load(string(filename))
+    
+    left_right_diff = [];
+    right_left_diff = [];
+
+    for i = 2:length(walk_edges)
+        if walk_edges(i) ~= -1 % not the start of episode
+            if impacts(i,4) == 1 % right foot
+                if impacts(i-1,4) == 0 % left foot
+                    left_right_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+                end
+            elseif impacts(i,4) == 0 % left foot
+                if impacts(i-1,4) == 1 % right foot
+                    right_left_diff(end+1) = impacts(i,1)-impacts(i-1,1);
+                end
+            end
+        end
+    end
+    
+    left_right_diff = left_right_diff./Fs;
+    right_left_diff = right_left_diff./Fs;
+    
+    left_right_mean = mean(left_right_diff);
+    left_right_std = std(left_right_diff);
+    right_left_mean = mean(right_left_diff);
+    right_left_std = std(right_left_diff);
+    
+    % deleting outliers: over 2 std
+    left_min = left_right_mean - 2*left_right_std;
+    left_max = left_right_mean + 2*left_right_std;
+    left_idx = find(left_right_diff > left_max | left_right_diff < left_min);
+    left_right_diff(left_idx) = [];
+    right_min = right_left_mean - 2*right_left_std;
+    right_max = right_left_mean + 2*right_left_std;
+    right_idx = find(right_left_diff > right_max | right_left_diff < right_min);
+    right_left_diff(right_idx) = [];
+    
+    left_right_mean = mean(left_right_diff);
+    left_right_std = std(left_right_diff);
+    right_left_mean = mean(right_left_diff);
+    right_left_std = std(right_left_diff);
+    
+    all_params(take,:) = [left_right_mean, right_left_mean, left_right_std, right_left_std];
+    
+    take_array_left = zeros(length(left_right_diff),1);
+    take_array_left(:) = take;
+    take_array_right = zeros(length(right_left_diff),1);
+    take_array_right(:) = take;
+    left_features = [take_array_left, left_right_diff.', zeros(length(left_right_diff),1)];
+    right_features = [take_array_right, right_left_diff.', ones(length(right_left_diff),1)];
+    featuresV = [featuresV; left_features];
+    featuresV = [featuresV; right_features]; % label ones for right_left
+end
+
+all_params
+
+featuresV(1,:) = []; % delete first row
+filename = [data_root_katie, 'ExcelData\all_step_times',subj,'.csv'];
+writematrix(featuresV,filename) 

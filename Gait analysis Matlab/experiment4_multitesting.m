@@ -53,7 +53,7 @@ pcbData = pcbData(1:lastidx_pcb,:);
 mocapT = mocapT(1:lastidx_mocap);
 allmocap = allmocap(1:lastidx_mocap,:,:);
 accTime = accTime(1:lastidx_acc);
-accData = accData(1:lastidx_acc);
+accData = accData(1:lastidx_acc,:);
 
 mocapT(end)
 fsrTime(end)
@@ -113,14 +113,22 @@ offset = 0.1; % start window N behind fsr start
 [coordinates] = findimpacts_mocap2pp(impacts,fsrTime,mocapT,allmocap,true);
 
 %% extract accel data NEED TO MAKE 2PP
-% % gets the peak of abs value of accelerometer values for x,y,z directions
-% % 4th col in variable 'acc_pks' indicates whether it is LorR leg.
-% window = 0.3; % seconds
-% offset = 0.25;
-% 
-% [acc_pks,acc_pk_idx] = find_accel_impacts(impacts,fsrTime,window,offset,accTime,accData,fsrData,Mfsr);
-% 
+% gets the peak of abs value of accelerometer values for x,y,z directions
+% 4th col in variable 'acc_pks' indicates whether it is LorR leg.
+window = 0.3; % seconds
+offset = 0.25;
 
+[acc_pks,acc_pk_idx] = find_accel_impacts2pp(impacts,fsrTime,window,offset,accTime,accData,fsrData);
+
+%% saving data to matlab
+processedfilepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\ProcessedData\';
+filename = [processedfilepath, 'both_',intervention];
+
+save(filename,'pcbTime','filt_pcbD','arrival_idx','peak_idx','peak_mag', ...
+    'fsrTime','fsrData','impacts', ...
+    'acc_pks','acc_pk_idx','accTime','accData',...
+    'mocapT','allmocap','coordinates')
+disp(append("Saved as ", filename))
 
 %% make plot just for com mtg 2/9/22
 
