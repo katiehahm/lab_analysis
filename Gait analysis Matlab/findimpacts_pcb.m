@@ -46,7 +46,7 @@ if visualize
     ar_idx(isnan(arrival_idx)) = 1;
     figure;
     for i=1:num_sensors
-        subplot(4,1,i)
+        subplot(num_sensors,1,i)
         plot(pcbT,filt_pcbD(:,i))
         hold on
         plot(pcbT(pk_idx(:,i)),pk_mag(:,i),'r.','MarkerSize',10)

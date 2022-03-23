@@ -1,3 +1,88 @@
+Fs = 12800;
+[impactN, sensorN] = size(arrival_idx);
+% looks at the next 3 impacts to label them
+real_ID = zeros(impactN,1);
+person1_idx = find(impacts(:,4) == 1 | impacts(:,4) == 2);
+real_ID(person1_idx) = 1; % label person 1 as 1
+person2_idx = find(impacts(:,4) == 3 | impacts(:,4) == 4);
+real_ID(person2_idx) = 2; % label person 2 as 2
+
+ID_estimates = zeros(impactN,sensorN);
+ID_estimates(1,:) = 2; % always label 1st impact as person 1
+ID_estimates(2,:) = 1; % always label 2nd impact as person 2
+ID_estimates(3,:) = 2;
+ID_confidence = zeros(impactN,sensorN);
+
+for s = 1:sensorN
+    for i = 1:impactN
+        curr_ID = ID_estimates(i,s);
+        curr_clip = filt_pcbD(findTindex(impact_starts(i),pcbTime):findTindex(impact_ends(i,s),pcbTime),s);
+        first_clip = [];
+        sec_clip = [];
+        third_clip = [];
+        commonF = linspace(0,2000,1000);
+        
+        if i+1 <= impactN && ID_estimates(i+1,s) == 0
+            first_clip = filt_pcbD(findTindex(impact_starts(i+1),pcbTime):findTindex(impact_ends(i+1,s),pcbTime),s);
+        end
+        if i+2 <= impactN && ID_estimates(i+2,s) == 0
+            sec_clip = filt_pcbD(findTindex(impact_starts(i+2),pcbTime):findTindex(impact_ends(i+2,s),pcbTime),s);
+        end
+        if i+3 <= impactN && ID_estimates(i+3,s) == 0
+            third_clip = filt_pcbD(findTindex(impact_starts(i+3),pcbTime):findTindex(impact_ends(i+3,s),pcbTime),s);
+        end
+        
+        if ~isempty([first_clip;sec_clip;third_clip])
+            max_amplitude = [max(abs(curr_clip)),max(abs(first_clip)),max(abs(sec_clip)),max(abs(third_clip))];
+            amp_ratios = [];
+            for k = 2:length(max_amplitude)
+                if ~isempty(max_amplitude(k))
+                    amp_ratios(end+1) = max_amplitude(k)/max_amplitude(1);
+                else
+                    amp_ratios(end+1) = NaN;
+                end
+            end
+            if i < 15
+                amp_ratios
+            end
+            [val,idx] = min(abs(amp_ratios - 1)); % get the idx with ratio closest to 1
+            ID_estimates(i+idx,s) = curr_ID;
+            % confidence calculates how different it is from max value
+            ID_confidence(i+idx,s) = abs(val - max(abs(amp_ratios - 1)));
+        end
+    end
+end
+
+final_estimates = zeros(impactN,1);
+% make sensors vote for the most likely ID
+% take vote of the lowest uncertainty
+for i = 1:impactN
+    curr_estimates = ID_estimates(i,:);
+    curr_confidence = ID_confidence(i,:);
+%     final_estimates(i) = mode(curr_estimates); % vote most often 
+    [~,max_id] = max(curr_confidence); % using confidence
+    final_estimates(i) = curr_estimates(max_id);
+end
+
+figure;
+plot(person1_idx,zeros(length(person1_idx),1),'rx')
+hold on
+plot(person2_idx,zeros(length(person2_idx),1),'bo')
+est_person1_idx = find(final_estimates == 1);
+est_person2_idx = find(final_estimates == 2);
+plot(est_person1_idx,ones(length(est_person1_idx),1),'rx')
+plot(est_person2_idx,ones(length(est_person2_idx),1),'bo')
+legend('Real person 1','Real person 2','Estimated person 1','Estimated person 2')
+ylim([-1 2])
+
+figure;
+results = real_ID - final_estimates;
+plot(results,'.')
+title('Real ID - estimated ID')
+ylim([-2 2])
+correct_idx = find(results == 0);
+accuracy = length(correct_idx)/length(results)
+
 N = length(arrival_idx(:,1));
 down_arrival_idx = round(arrival_idx(:,1)./10);
 for i = 1:10

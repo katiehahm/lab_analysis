@@ -2,7 +2,7 @@ function [acc_pks,acc_pk_idx] = find_accel_impacts2pp(impacts,fsrTime,window,off
 % returns the peak values and index of peaks for each impact
 % acc_pks = [x peak, y peak, z peak, R = 1 or L = 0]
 % acc_pk_idx = same as pks but index
-% 11/22/21
+% 3/14/22
 
 Nimpacts = length(impacts(:,1));
 

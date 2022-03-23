@@ -142,6 +142,15 @@ experiment3_makefigures.m (12/21/21)
 armax_TA_estimation.m (1/12/22)
 	Uses armax coeffs and gets energy, etc. from armax results to estimate TA
 
+experiment4_multitesting.m (2/8/22)
+	2 people walking data processing
+
+experiment4_analysis.m (3/1/22)
+	to analyze, tbd. contains spectrogram, fft, energy, etc. methods
+
+crc_analysis.m (3/10/22)
+	analyze data collected at crc to see relation between TA and GRF
+
 
 
 

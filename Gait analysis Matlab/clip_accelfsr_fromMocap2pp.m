@@ -1,4 +1,4 @@
-function [accData, accTime, fsrData, fsrTime] = clip_accelfsr_fromMocap2pp(Data, Time, Fs)
+function [accData, accTime, fsrData, fsrTime] = clip_accelfsr_fromMocap2pp(Data, Time, Fs, TriggerRow)
 % 11/22/21
 % clips the fsr data where 9th channel peaks and dips to match mocap
 % also resamples data: FSR is 296.3 Hz, Trigger is 2222 Hz
@@ -8,7 +8,6 @@ function [accData, accTime, fsrData, fsrTime] = clip_accelfsr_fromMocap2pp(Data,
 Fs_heel = Fs(1);
 Fs_acc = Fs(2);
 
-TriggerRow = length(Data(:,1));
 idx = find(Data(TriggerRow,:) < -1);
 starti = idx(1);
 idx = find(Data(TriggerRow,starti:end) > -1);
@@ -16,6 +15,10 @@ endi = idx(1) + starti - 1;
 
 startt = Time(TriggerRow,starti);
 endt = Time(TriggerRow,endi);
+
+% delete trigger row from data so that the fsr/accel row numbers are
+% consistent
+Data(TriggerRow,:) = [];
 
 converted_starti_heel = round(startt*Fs_heel);
 converted_endi_heel = round(endt*Fs_heel);
