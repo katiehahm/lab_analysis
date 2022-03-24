@@ -151,7 +151,10 @@ experiment4_analysis.m (3/1/22)
 crc_analysis.m (3/10/22)
 	analyze data collected at crc to see relation between TA and GRF
 
-
+experiment4_footfalldetection.m (3/24/22)
+	used to detect when footfalls happen
+	separate doc from exp4_analysis because it was getting too long
+	refer to blue notebook to see pseudocode
 
 
 Data
