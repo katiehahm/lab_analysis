@@ -156,6 +156,12 @@ experiment4_footfalldetection.m (3/24/22)
 	separate doc from exp4_analysis because it was getting too long
 	refer to blue notebook to see pseudocode
 
+recursive_stepID.m (3/30/22)
+	recursively assigns person ID to list of step times for a single walking segment
+	1st round of step times inputs come from experiment4_footfalldetection, where 
+	cwt, etc is used to detect step times
+
+
 
 Data
 ===============================================

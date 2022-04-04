@@ -62,7 +62,7 @@ K = histcounts(IX, 1:IX(end)+1) ;
 
 % number of unique permutations is M = N! / (K1!*...Kn!)
 F = cumprod([1 1 2:N]) ; % trick to get all needed factorials (note that all K < N)                                
-M = F(N+1) / prod(F(K+1)) ; % number of unique permutations
+M = round(F(N+1) / prod(F(K+1))) ; % number of unique permutations
 
 % pre-allocation using the first permutation. IX is sorted
 P = repmat(IX, M, 1) ;
