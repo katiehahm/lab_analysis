@@ -189,6 +189,10 @@ ProcessedData:
 
 Python
 ================================================
+GMM_derivation.py (2/28/22)
+
+
+
 magnitude_predict.py (8/19/21)
 	Predicts the magnitude of heel strike based on data
 

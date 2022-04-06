@@ -185,6 +185,173 @@ save(data_root_katie,'seg2_estimateID', 'seg2_estimated_steptimes',...
     'seg11_estimateID', 'seg11_estimated_steptimes')
 
 %% perform GMM on these estimated step times
+% load processed data 2x workspace files
+GMmodels = zeros(2,9);
+scaled_means = zeros(2,3);
+
+for i = 1:2 % for each person
+    differences = [];
+    
+    for s = 2:11
+        if s == 2
+            idx = find(seg2_estimateID == i);
+            steptimes = seg2_estimated_steptimes(idx);
+        elseif s == 3
+            idx = find(seg3_estimateID == i);
+            steptimes = seg3_estimated_steptimes(idx);
+        elseif s == 4
+            idx = find(seg4_estimateID == i);
+            steptimes = seg4_estimated_steptimes(idx);
+        elseif s == 5
+            idx = find(seg5_estimateID == i);
+            steptimes = seg5_estimated_steptimes(idx);
+        elseif s == 6
+            idx = find(seg6_estimateID == i);
+            steptimes = seg6_estimated_steptimes(idx);
+        elseif s == 7
+            idx = find(seg7_estimateID == i);
+            steptimes = seg7_estimated_steptimes(idx);
+        elseif s == 8
+            idx = find(seg8_estimateID == i);
+            steptimes = seg8_estimated_steptimes(idx);
+        elseif s == 9
+            idx = find(seg9_estimateID == i);
+            steptimes = seg9_estimated_steptimes(idx);
+        elseif s == 10
+            idx = find(seg10_estimateID == i);
+            steptimes = seg10_estimated_steptimes(idx);
+        elseif s == 11
+            idx = find(seg11_estimateID == i);
+            steptimes = seg11_estimated_steptimes(idx);
+        end
+            
+        for t = 2:length(steptimes)
+            differences(end+1) = steptimes(t) - steptimes(t-1);
+        end
+    end
+
+    % estimated step times GMM results
+    GM = fitgmdist(transpose(differences),2,'RegularizationValue',0.000001);
+    proportion = GM.ComponentProportion;
+    mu = GM.mu;
+    sig = GM.Sigma;
+    GMmodels(i,:) = [mu(1), mu(2), sig(1), sig(2), proportion(1), proportion(2), GM.AIC, GM.BIC, GM.NegativeLogLikelihood];
+    
+    [prop1,~] = max(GMmodels(i,5:6));
+    if (1-prop1) < abs(0.5-prop1)
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*(1- (GMmodels(i,5))^2);
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*(1- (GMmodels(i,6))^2);
+        scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
+    else
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*abs(0.5- GMmodels(i,5));
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*abs(0.5- GMmodels(i,6));
+        scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
+    end
+    i
+    disp("Estimated scaled means")
+    scaled_means
+    
+    % real left and right average step times
+    left_right_diff = [];
+    right_left_diff = [];
+    real_differences = [];
+    for s = 2:length(segments)
+        start_index = segments(s-1)+1;
+        stop_index = segments(s);
+
+        real_impact_time_arr = impacts(start_index:stop_index,1)./Fs_fsr;
+        [real_impact_time_arr,sort_idx] = sort(real_impact_time_arr);
+        impact_ID = impacts(start_index:stop_index,4);
+        impact_ID = impact_ID(sort_idx);
+        this_impact_ID_idx = find(floor(impact_ID./3) == (i-1));
+        
+        for t = 2:length(this_impact_ID_idx)
+            curr_i = this_impact_ID_idx(t);
+            past_i = this_impact_ID_idx(t-1);
+            real_differences(end+1) = (real_impact_time_arr(curr_i) - real_impact_time_arr(past_i));
+            if mod(impact_ID(curr_i),2) == 1 % left foot
+                left_right_diff(end+1) = (real_impact_time_arr(curr_i) - real_impact_time_arr(past_i));
+            else % right foot
+                right_left_diff(end+1) = (real_impact_time_arr(curr_i) - real_impact_time_arr(past_i));
+            end
+        end
+        
+        
+    end
+    left_to_right_groundtruth = mean(left_right_diff)
+    right_to_left_groundtruth = mean(right_left_diff)
+    
+    % GMM results of real step times
+    mu = mean(real_differences);
+    sig = std(real_differences);
+    mu_s = [mu; mu+0.01];
+    sigma_s = zeros(1,1,2);
+    sigma_s(1,1,:) = [sig; sig];
+    pcomponents = [1/2,1/2];
+    
+    GM = fitgmdist(transpose(real_differences),2,'RegularizationValue',0.000001);
+    proportion = GM.ComponentProportion;
+    mu = GM.mu;
+    sig = GM.Sigma;
+    GMmodel_real = [mu(1), mu(2), sig(1), sig(2), proportion(1), proportion(2), GM.AIC, GM.BIC, GM.NegativeLogLikelihood];
+    
+    [prop1,~] = max(GMmodel_real(5:6));
+    if (1-prop1) < abs(0.5-prop1)
+        scaled_mean1 = GMmodel_real(1) + (GMmodel_real(2)-GMmodel_real(1))*(1- (GMmodel_real(5))^2);
+        scaled_mean2 = GMmodel_real(2) + (GMmodel_real(1)-GMmodel_real(2))*(1- (GMmodel_real(6))^2);
+        scaled_mean_diff = abs(scaled_mean1-scaled_mean2);
+    else
+        scaled_mean1 = GMmodel_real(1) + (GMmodel_real(2)-GMmodel_real(1))*abs(0.5- GMmodel_real(5));
+        scaled_mean2 = GMmodel_real(2) + (GMmodel_real(1)-GMmodel_real(2))*abs(0.5- GMmodel_real(6));
+        scaled_mean_diff = abs(scaled_mean1-scaled_mean2);
+    end
+    disp("Real step times GMM")
+    [scaled_mean1, scaled_mean2, scaled_mean_diff]
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

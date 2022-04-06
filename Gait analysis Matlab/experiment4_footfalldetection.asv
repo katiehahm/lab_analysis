@@ -131,7 +131,7 @@ final_estimates(1,:) = []; % from initialization
 %% using above, look at all combinations, find one with min uncertainty 3/30/22
 
 close all
-for s = 5:5%length(segments)
+for s = 3:3%length(segments)
     start_index = segments(s-1)+1;
     stop_index = segments(s);
 
@@ -167,10 +167,223 @@ for s = 5:5%length(segments)
     
 end
 
-seg5_estimated_steptimes = step_times;
-seg5_estimateID = estimateID;
+seg3_estimated_steptimes = step_times;
+seg3_estimateID = estimateID;
+
+%% save estimated step ID date 4/4/22
+
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth experiment 3_11_22\ProcessedData\both_towards1_estimatedStepTimes';
+save(data_root_katie,'seg2_estimateID', 'seg2_estimated_steptimes',...
+    'seg3_estimateID', 'seg3_estimated_steptimes',...
+    'seg4_estimateID', 'seg4_estimated_steptimes',...
+    'seg5_estimateID', 'seg5_estimated_steptimes',...
+    'seg6_estimateID', 'seg6_estimated_steptimes',...
+    'seg7_estimateID', 'seg7_estimated_steptimes',...
+    'seg8_estimateID', 'seg8_estimated_steptimes',...
+    'seg9_estimateID', 'seg9_estimated_steptimes',...
+    'seg10_estimateID', 'seg10_estimated_steptimes',...
+    'seg11_estimateID', 'seg11_estimated_steptimes')
 
 %% perform GMM on these estimated step times
+
+GMmodels = zeros(2,9);
+scaled_means = zeros(2,3);
+
+for i = 1:2 % for each person
+    differences = [];
+    
+    for s = 2:11
+        if s == 2
+            idx = find(seg2_estimateID == i);
+            steptimes = seg2_estimated_steptimes(idx);
+        elseif s == 3
+            idx = find(seg3_estimateID == i);
+            steptimes = seg3_estimated_steptimes(idx);
+        elseif s == 4
+            idx = find(seg4_estimateID == i);
+            steptimes = seg4_estimated_steptimes(idx);
+        elseif s == 5
+            idx = find(seg5_estimateID == i);
+            steptimes = seg5_estimated_steptimes(idx);
+        elseif s == 6
+            idx = find(seg6_estimateID == i);
+            steptimes = seg6_estimated_steptimes(idx);
+        elseif s == 7
+            idx = find(seg7_estimateID == i);
+            steptimes = seg7_estimated_steptimes(idx);
+        elseif s == 8
+            idx = find(seg8_estimateID == i);
+            steptimes = seg8_estimated_steptimes(idx);
+        elseif s == 9
+            idx = find(seg9_estimateID == i);
+            steptimes = seg9_estimated_steptimes(idx);
+        elseif s == 10
+            idx = find(seg10_estimateID == i);
+            steptimes = seg10_estimated_steptimes(idx);
+        elseif s == 11
+            idx = find(seg11_estimateID == i);
+            steptimes = seg11_estimated_steptimes(idx);
+        end
+            
+        for t = 2:length(steptimes)
+            differences(end+1) = steptimes(t) - steptimes(t-1);
+        end
+    end
+
+    mu = mean(differences);
+    sig = std(differences);
+
+    % % extracting outliers (step lengths that are too large)
+    % % that are most likely bc of extraight_straight_paths
+    % outliers = find(differences>(mu+1.5*sig) | differences<(mu-1.5*sig));
+    % differences(outliers) = [];
+    % differences(find(differences == 0)) = [];
+    
+%     disp(intervention)
+%     GMModel = fitgmdist(transpose(differences),2, 'RegularizationValue',0.1)
+    mu_s = [mu; mu+0.01];
+    sigma_s = zeros(1,1,2);
+    sigma_s(1,1,:) = [sig; sig];
+%     sigma_s(:,:,2) = [sig; sig];
+    pcomponents = [1/2,1/2];
+%     S = struct('mu',mu_s,'Sigma',sigma_s,'ComponentProportion',pcomponents);
+%     GM = fitgmdist(transpose(differences),2,'Start',S);
+    GM = fitgmdist(transpose(differences),2,'RegularizationValue',0.000001);
+    proportion = GM.ComponentProportion;
+    mu = GM.mu;
+    sig = GM.Sigma;
+    GMmodels(i,:) = [mu(1), mu(2), sig(1), sig(2), proportion(1), proportion(2), GM.AIC, GM.BIC, GM.NegativeLogLikelihood]
+    
+    [prop1,~] = max(GMmodels(i,5:6));
+    if (1-prop1) < abs(0.5-prop1)
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*(1- (GMmodels(i,5))^2);
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*(1- (GMmodels(i,6))^2);
+        scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
+    else
+        scaled_means(i,1) = GMmodels(i,1) + (GMmodels(i,2)-GMmodels(i,1))*abs(0.5- GMmodels(i,5));
+        scaled_means(i,2) = GMmodels(i,2) + (GMmodels(i,1)-GMmodels(i,2))*abs(0.5- GMmodels(i,6));
+        scaled_means(i,3) = abs(scaled_means(i,1)-scaled_means(i,2));
+    end
+    scaled_means
+    
+    real_impact_times = [0,0];
+    real_differences = [];
+    for s = 2:length(segments)
+        start_index = segments(s-1)+1;
+        stop_index = segments(s);
+
+        real_impact_time_arr = impacts(start_index:stop_index,1)./Fs_fsr;
+        impact_ID = impacts(start_index:stop_index,4);
+        leftidx = find(impact_ID == (i-1)*2 + 1);
+        left_add_array = [real_impact_time_arr(leftidx),ones(length(leftidx),1)];
+        real_impact_times = [real_impact_times; left_add_array];
+        
+        rightidx = find(impact_ID == (i-1)*2 + 2);
+        right_add_array = [real_impact_time_arr(rightidx),ones(length(rightidx),1)+1];
+        real_impact_times = [real_impact_times; right_add_array];
+        
+        all_ID_real_steptimes = sort([left_add_array, right_add_array]);
+        for t = 2:length(all_ID_real_steptimes)
+            real_differences(end+1) = all_ID_real_steptimes(t) - all_ID_real_steptimes(t-1);
+        end
+        
+    end
+    real_impact_times(1,:) = []; % initialization
+    
+    % ground truth average of left and right leg
+    all_leftidx = find(real_impact_times(:,2) == 1);
+    leftavg = mean(real_impact_times(all_leftidx,1))
+    all_rightidx = find(real_impact_times(:,2) == 2);
+    rightavg = mean(real_impact_times(all_rightidx,1))
+    
+    % GMM results of real step times
+    mu = mean(real_differences);
+    sig = std(real_differences);
+    mu_s = [mu; mu+0.01];
+    sigma_s = zeros(1,1,2);
+    sigma_s(1,1,:) = [sig; sig];
+    pcomponents = [1/2,1/2];
+    
+    GM = fitgmdist(transpose(real_differences),2,'RegularizationValue',0.000001);
+    proportion = GM.ComponentProportion;
+    mu = GM.mu;
+    sig = GM.Sigma;
+    GMmodel_real = [mu(1), mu(2), sig(1), sig(2), proportion(1), proportion(2), GM.AIC, GM.BIC, GM.NegativeLogLikelihood]
+    
+    [prop1,~] = max(GMmodel_real(5:6));
+    if (1-prop1) < abs(0.5-prop1)
+        scaled_mean1 = GMmodel_real(1) + (GMmodel_real(2)-GMmodel_real(1))*(1- (GMmodel_real(5))^2);
+        scaled_mean2 = GMmodel_real(2) + (GMmodel_real(1)-GMmodel_real(2))*(1- (GMmodel_real(6))^2);
+        scaled_mean_real = abs(scaled_mean1-scaled_mean2);
+    else
+        scaled_mean1 = GMmodel_real(1) + (GMmodel_real(2)-GMmodel_real(1))*abs(0.5- GMmodel_real(5));
+        scaled_mean2 = GMmodel_real(2) + (GMmodel_real(1)-GMmodel_real(2))*abs(0.5- GMmodel_real(6));
+        scaled_mean_real = abs(scaled_mean1-scaled_mean2);
+    end
+    scaled_mean_real
+end
+
+
+% % calculation of how accurate GMM scaled guess is for each step time 
+% 
+% real_time = all_params(:,1:2);
+% gmm_time = scaled_means(:,1:2);
+% 
+% max_real = max(real_time,[],2);
+% min_real = min(real_time,[],2);
+% max_gmm = max(gmm_time,[],2);
+% min_gmm = min(gmm_time,[],2);
+% 
+% performance = sum(abs(max_real - max_gmm));
+% performance = performance + sum(abs(min_real - min_gmm));
+% performance = performance/(2*length(real_time))
+% 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
