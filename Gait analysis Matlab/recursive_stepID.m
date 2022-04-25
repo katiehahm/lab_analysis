@@ -14,6 +14,15 @@ for i = round(powerN/3):round(2*powerN/3) % know they at least have to be 33% of
     allcombinations = [allcombinations; P];
 end
 
+% below uses the implemented dfs algorithm
+% P1 = dfs_IDsequence(1,powerN,[1],step_times,step_times(1),step_times(2),1,0,zeros(1,powerN));
+% P1(1,:) = []; % delete initialization
+% allcombinations = [allcombinations; P1];
+% P2 = dfs_IDsequence(1,powerN,[2],step_times,step_times(1),step_times(2),0,1,zeros(1,powerN));
+% P2(1,:) = []; % delete initialization
+% allcombinations = [allcombinations; P2];
+% size(allcombinations)
+
 allcombinations(1,:) = []; % delete first row from initialization
 [allcombN,~] = size(allcombinations);
 scores = zeros(allcombN,1);
@@ -69,16 +78,21 @@ set(gcf,'Position',[100 100 500 200])
 
 % perform adding impact first (more accurate?)
 % if any step time is 1.5x larger than largest step time, missing an impact
-diff_matrix(idx,:) % uncomment to debug #########################
+% diff_matrix(idx,:) % uncomment to debug !!!!!!!!!!!!!!!
 % diff_matrix(idx,est_o)
-bigidxone = find(diff_matrix(idx,est_o) > step_o*1.65);
+bigidxone = find(diff_matrix(idx,est_o) > step_o*1.45);
 % diff_matrix(idx,est_x)
-bigidxtwo = find(diff_matrix(idx,est_x) > step_x*1.65);
+bigidxtwo = find(diff_matrix(idx,est_x) > step_x*1.45);
 bigidx = sort([est_o(bigidxone); est_x(bigidxtwo)]);
 if ~isempty(bigidx)
-    bigidx(1)
+    [change_val,~] = max(bigidx);
+%     change_val % uncomment to debug!!!!!!!!
     % add element at bigidx-1 to duplicate it
-    step_times = [step_times(1:bigidx(1)-1); step_times(bigidx(1)-1:end)];
+    if step_times(bigidx(1)) == step_times(bigidx(1)-1) % if current one is overlap, add element at bigidx-2
+        step_times = [step_times(1:bigidx(1)-2); step_times(bigidx(1)-2:end)];
+    else
+        step_times = [step_times(1:bigidx(1)-1); step_times(bigidx(1)-1:end)];
+    end
     [estimateID, step_times] = recursive_stepID(curr_ID_labels, real_impact_times, step_times, step_o, step_x);
 else
     % if all element in a column in diff_matrix is too small, delete, recursive

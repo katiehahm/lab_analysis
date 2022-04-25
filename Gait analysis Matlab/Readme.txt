@@ -147,6 +147,7 @@ experiment4_multitesting.m (2/8/22)
 
 experiment4_analysis.m (3/1/22)
 	to analyze, tbd. contains spectrogram, fft, energy, etc. methods
+	most of these don't work. Move onto _footfalldetection.m, these work
 
 crc_analysis.m (3/10/22)
 	analyze data collected at crc to see relation between TA and GRF
@@ -161,6 +162,22 @@ recursive_stepID.m (3/30/22)
 	1st round of step times inputs come from experiment4_footfalldetection, where 
 	cwt, etc is used to detect step times
 
+experiment4_localizationgrf.m (4/5/22)
+	to use after experiment4_footfalldetection.m
+	use the step times from previous file to localize and get grf/ta values
+
+delsys_csv2mat.m (4/6/22)
+	converts delsys data csv file to mat file
+	to use from files after delsys software update
+
+experiment4_allprocessingcompiled.m (4/18/22)
+	put the entire processing into sections into this file
+	start with raw .mat workspaces and do step time, gmm, etc.
+
+dfs_IDsequence.m (4/20/22)
+	uses DFS/binary tree approach to search through all combinations of step times
+	outputs a small list of possible step time combinations
+	hopefully faster than doing uniqueperms
 
 
 Data

@@ -4,6 +4,9 @@
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth experiment 3_11_22\ProcessedData\both_towards1';
 load(string(data_root_katie))
 
+% find walking segments
+
+
 freq_lower = 100; % Hz; frequency limits for cwt
 freq_higher = 350;
 
@@ -309,11 +312,52 @@ for i = 1:2 % for each person
     [scaled_mean1, scaled_mean2, scaled_mean_diff]
 end
 
+%% save estimated_impacts (4/5/22)
 
+estimated_impacts = zeros(1, 2);
 
+for s = 2:11
+    if s == 2
+        estimateID = seg2_estimateID;
+        steptimes = seg2_estimated_steptimes;
+    elseif s == 3
+        estimateID = seg3_estimateID;
+        steptimes = seg3_estimated_steptimes;
+    elseif s == 4
+        estimateID = seg4_estimateID;
+        steptimes = seg4_estimated_steptimes;
+    elseif s == 5
+        estimateID = seg5_estimateID;
+        steptimes = seg5_estimated_steptimes;
+    elseif s == 6
+        estimateID = seg6_estimateID;
+        steptimes = seg6_estimated_steptimes;
+    elseif s == 7
+        estimateID = seg7_estimateID;
+        steptimes = seg7_estimated_steptimes;
+    elseif s == 8
+        estimateID = seg8_estimateID;
+        steptimes = seg8_estimated_steptimes;
+    elseif s == 9
+        estimateID = seg9_estimateID;
+        steptimes = seg9_estimated_steptimes;
+    elseif s == 10
+        estimateID = seg10_estimateID;
+        steptimes = seg10_estimated_steptimes;
+    elseif s == 11
+        estimateID = seg11_estimateID;
+        steptimes = seg11_estimated_steptimes;
+    end
 
+    for t = 1:length(estimateID)
+        add_array = [steptimes(t),estimateID(t)];
+        estimated_impacts = [estimated_impacts; add_array];
+    end
+end
+estimated_impacts(1,:) = []; % from initialization
 
-
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth experiment 3_11_22\ProcessedData\both_towards1_estimatedStepTimes';
+save(data_root_katie,'estimated_impacts','-append')
 
 
 

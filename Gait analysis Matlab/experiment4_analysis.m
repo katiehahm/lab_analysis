@@ -1,3 +1,6 @@
+% this file was used to experiment with footfall detection
+% does not contain any reusable code
+
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth experiment 3_11_22\ProcessedData\both_towards1';
 load(string(data_root_katie))
 
