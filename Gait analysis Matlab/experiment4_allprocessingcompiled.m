@@ -363,7 +363,7 @@ final_estimates(1,:) = []; % from initialization
 % will take a long time to run
 
 % close all
-final_estimates_labels = [0,0];
+final_estimates_labels = [0,0,0];
 for s = 2:length(segments)
 % for s = 11:11
     start_index = segments(s-1);
@@ -372,7 +372,7 @@ for s = 2:length(segments)
     step_times_idx = find(final_estimates(:,2) == s);
     orig_step_times = final_estimates(step_times_idx,1)./Fs_pcb;
     
-    curr_ID_labels = ID_labels(start_index:stop_index);
+    real_labels = ID_labels(start_index:stop_index);
     real_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
     
 %     shorten the search by cutting segments in half
@@ -384,32 +384,32 @@ for s = 2:length(segments)
     
     real_idx = find(real_impact_times <= half_time);
     step_times_idx = find(orig_step_times <= (half_time+0.1)); % includes a buffer for time cutoff
-    [estimateID1, step_times1] = recursive_stepID(curr_ID_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
+    [estimateID1, step_times1] = recursive_stepID(real_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
 
 %     [estimateID, step_times] = recursive_stepID(curr_ID_labels, real_impact_times, sort(step_times),step_o,step_x);
 
     
     title(sprintf('Final estimated ID labels %d segment'),s)
     
-    for i = 1:length(step_times)
-        add_array = [step_times(i),estimateID(i)];
-        final_estimates_labels = [final_estimates_labels; add_array];
-    end
+%     for i = 1:length(step_times)
+%         add_array = [step_times(i),estimateID(i),s];
+%         final_estimates_labels = [final_estimates_labels; add_array];
+%     end
     
     % second half
     real_idx = find(real_impact_times > half_time);
     step_times_idx = find(orig_step_times > (half_time-0.1)); % includes a buffer for time cutoff
-    [estimateID2, step_times2] = recursive_stepID(curr_ID_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
+    [estimateID2, step_times2] = recursive_stepID(real_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
 
 %     [estimateID, step_times] = recursive_stepID(curr_ID_labels, real_impact_times, sort(step_times),step_o,step_x);
 
     
     title(sprintf('Final estimated ID labels %d segment'),s)
     
-    [estimateID, step_times] = recursive_stepID_noperms(curr_ID_labels, real_impact_times, [estimateID1,estimateID2], [step_times1;step_times2], step_o, step_x);
+    [estimateID, step_times] = recursive_stepID_noperms(real_labels, real_impact_times, [estimateID1,estimateID2], [step_times1;step_times2], step_o, step_x);
     
     for i = 1:length(step_times)
-        add_array = [step_times(i),estimateID(i)];
+        add_array = [step_times(i),estimateID(i),s];
         final_estimates_labels = [final_estimates_labels; add_array];
     end
     
@@ -433,95 +433,169 @@ plot(final_estimates_labels(est_x,1),0.5,'rx')
 
 % save(filename,'final_estimates_labels','-append')
 
-%% evaluate final_estimates_labels (4/22/22)
+%% manually remove beg/end of segments that are extra impacts (4/25/22)
+% clean_... means start/end of segments that don't match have been removed
+
+% go off of the large figure from above
+remove_est = [1.23391,8.15922,16.8232,51.7814,63.6929,74.0995,83.783,90.9295,103.721,110.536,129.128]; % seconds
+remove_real = [42.9097,51.8906,79.8424,80.4127,94.0849,90.9191,94.8814,103.737]; % seconds
+
+clean_final_estimates_labels = final_estimates_labels;
+remove_est_idx = [];
+for i = 1:length(remove_est)
+    [~,change_idx] = min(abs(final_estimates_labels(:,1) - remove_est(i)));
+    remove_est_idx(end+1) = change_idx;
+end
+clean_final_estimates_labels(remove_est_idx,:) = [];
+
+clean_impacts = impacts;
+clean_ID_labels = ID_labels;
+remove_real_idx = [];
+for i = 1:length(remove_real)
+    [~,change_idx] = min(abs(impacts(:,1)./Fs_fsr - remove_real(i)));
+    remove_real_idx(end+1) = change_idx;
+end
+clean_impacts(remove_real_idx,:) = [];
+clean_ID_labels(remove_real_idx) = [];
+
+% plot results
+figure;
+real_o = find(clean_ID_labels == 1);
+real_x = find(clean_ID_labels == 2);
+plot(clean_impacts(real_o,1)./Fs_fsr,0,'bo')
+hold on
+plot(clean_impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-1 1])
+
+est_o = find(clean_final_estimates_labels(:,2) == 1);
+est_x = find(clean_final_estimates_labels(:,2) == 2);
+
+plot(clean_final_estimates_labels(est_o,1),0.5,'ro')
+plot(clean_final_estimates_labels(est_x,1),0.5,'rx')
+
+save(filename,'clean_final_estimates_labels','clean_impacts','clean_ID_labels','-append')
+%% evaluate clean_final_estimates_labels (4/22/22)
 
 segmentN = length(segments)-1;
 false_pos = zeros(1,segmentN);
 false_neg = zeros(1,segmentN);
 true_pos = zeros(1,segmentN);
 rmse = zeros(1,segmentN);
+error_thresh = 0.05;
 
-for i=2:length(segments)
+big_false_pos = zeros(1,segmentN);
+big_false_neg = zeros(1,segmentN);
+big_true_pos = zeros(1,segmentN);
+big_rmse = zeros(1,segmentN);
+big_error_thresh = 0.1;
+
+for s = 2:length(segments)
     
     curr_false_pos = 0;
     curr_false_neg = 0;
     curr_true_pos = 0;
     curr_rmse = 0;
     
+    big_curr_false_pos = 0;
+    big_curr_false_neg = 0;
+    big_curr_true_pos = 0;
+    big_curr_rmse = 0;
+    
     start_index = segments(s-1);
     stop_index = segments(s)-1;
+    start_time = impacts(start_index,1)./Fs_fsr;
+    stop_time = impacts(stop_index,1)./Fs_fsr;
     
-    curr_ID_labels = ID_labels(start_index:stop_index);
-    curr_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
+    clean_idx = find(clean_impacts(:,1)./Fs_fsr >= start_time & clean_impacts(:,1)./Fs_fsr <= stop_time);
     
-    final_estimates_idx = find(final_estimates_labels(:,1) >= curr_impact_times(1) & final_estimates_labels(:,1) <= curr_impact_times(end));
-    curr_estimate_times = final_estimates_labels(final_estimates_idx,1);
-    curr_estimate_labels = final_estimates_labels(final_estimates_idx,2);
+    real_labels = clean_ID_labels(clean_idx);
+    real_times = clean_impacts(clean_idx,1)./Fs_fsr;
     
-    totalN = length(curr_impact_times);
-    for t = 1:totalN
-        curr_time = curr_impact_times(t); % real impact time
-        curr_label = curr_ID_labels(t);
-        diff = abs(curr_estimate_times - curr_time);
-        diff_idx = find(diff < 0.05); % 0.05 error threshold!!!!
-        same_label_idx = find(curr_estimate_labels == curr_label);
-        first_same_label_time = curr_estimate_times(same_label_idx(1));
-        last_same_label_time = curr_estimate_times(same_label_idx(end));
+    final_estimates_idx = find(clean_final_estimates_labels(:,3) == s); % find labels belonging to this segment number
+    estimate_times = clean_final_estimates_labels(final_estimates_idx,1);
+    estimate_labels = clean_final_estimates_labels(final_estimates_idx,2);
+    
+    realN = length(real_times);
+    estN = length(estimate_times);
+    
+    % compare each real time with estimated times to find true+ & false-
+    for t = 1:realN
+        curr_time = real_times(t); % real impact time
+        curr_label = real_labels(t);
+        diff = abs(estimate_times - curr_time);
+        diff_idx = find(diff < error_thresh);
         if ~isempty(diff_idx) % if a estimated impact exists close to the real impact time
-            est_idx = find(curr_estimate_labels(diff_idx)==curr_label);
+            est_idx = find(estimate_labels(diff_idx)==curr_label);
             if ~isempty(est_idx) % if the close impact is labeled correctly
                 curr_true_pos = curr_true_pos + 1;
-                est_times = curr_estimate_times(diff_idx);
+                est_times = estimate_times(diff_idx);
                 est_time = est_times(est_idx);
-                curr_rmse = curr_rmse + (curr_time - est_time)^2;
+                curr_rmse = curr_rmse + (curr_time - est_time)^2; % rmse calculation
             else
-                % check it's not the beginning and end of the segment
-                if first_same_label_time-0.2 < curr_time
-                    if last_same_label_time+0.2 > curr_time
-                        curr_false_neg = curr_false_neg + 1;
-                    end
-                end
+                curr_false_neg = curr_false_neg + 1;
             end
         else
-            if first_same_label_time-0.2 < curr_time
-                if last_same_label_time+0.2 > curr_time
-                    curr_false_neg = curr_false_neg + 1;
-                end
+            curr_false_neg = curr_false_neg + 1;
+        end
+        
+        diff_idx = find(diff < big_error_thresh);
+        if ~isempty(diff_idx) % if a estimated impact exists close to the real impact time
+            est_idx = find(estimate_labels(diff_idx)==curr_label);
+            if ~isempty(est_idx) % if the close impact is labeled correctly
+                big_curr_true_pos = big_curr_true_pos + 1;
+                est_times = estimate_times(diff_idx);
+                est_time = est_times(est_idx);
+                big_curr_rmse = big_curr_rmse + (curr_time - est_time)^2; % rmse calculation
+            else
+                big_curr_false_neg = big_curr_false_neg + 1;
             end
+        else
+            big_curr_false_neg = big_curr_false_neg + 1;
         end
     end
     
-    est_totalN = length(curr_estimate_times);
-    for t = 1:est_totalN
-        curr_est_time = curr_estimate_times(t); % estimated impact time
-        curr_est_label = curr_estimate_labels(t);
-        diff = abs(curr_impact_times - curr_est_time);
-        diff_idx = find(diff < 0.05);
-        if isempty(diff_idx)
-            same_label_idx = find(curr_ID_labels == curr_est_label);
-            first_same_label_time = curr_impact_times(same_label_idx(1));
-            last_same_label_time = curr_impact_times(same_label_idx(end));
-            % check that it's not the beginning of the segment
-            if first_same_label_time-0.2 < curr_est_time
-                % check that it's not the beginning of the segment
-                if last_same_label_time+0.2 > curr_est_time
-                    curr_false_pos = curr_false_pos + 1;
-                end
+    % compare each est time with real times to find false+
+    for t = 1:estN
+        curr_est_time = estimate_times(t); % estimated impact time
+        curr_est_label = estimate_labels(t);
+        diff = abs(real_times - curr_est_time);
+        diff_idx = find(diff < error_thresh);
+        if ~isempty(diff_idx)
+            real_idx = find(real_labels(diff_idx)==curr_est_label);
+            if isempty(real_idx)
+                curr_false_pos = curr_false_pos + 1;
             end
+        else
+            curr_false_pos = curr_false_pos + 1;
+        end
+        
+        diff_idx = find(diff < big_error_thresh);
+        if ~isempty(diff_idx)
+            real_idx = find(real_labels(diff_idx)==curr_est_label);
+            if isempty(real_idx)
+                big_curr_false_pos = big_curr_false_pos + 1;
+            end
+        else
+            big_curr_false_pos = big_curr_false_pos + 1;
         end
     end
     
     % store
-    false_pos(i-1) = curr_false_pos/est_totalN;
-    false_neg(i-1) = curr_false_neg/totalN;
-    true_pos(i-1) = curr_true_pos/totalN;
-    rmse(i-1) = curr_rmse/curr_true_pos;
+    false_pos(s-1) = curr_false_pos/estN;
+    false_neg(s-1) = curr_false_neg/realN;
+    true_pos(s-1) = curr_true_pos/realN;
+    rmse(s-1) = sqrt(curr_rmse/curr_true_pos);
+    
+    big_false_pos(s-1) = big_curr_false_pos/estN;
+    big_false_neg(s-1) = big_curr_false_neg/realN;
+    big_true_pos(s-1) = big_curr_true_pos/realN;
+    big_rmse(s-1) = sqrt(big_curr_rmse/big_curr_true_pos);
 end
 
+save(filename,'false_pos','false_neg','true_pos','rmse','big_false_pos','big_false_neg','big_true_pos','big_rmse','-append')
 
+%% perform GMM on these estimated step times (4/26/22)
 
-%% perform GMM on these estimated step times
-% load processed data 2x workspace files
 estimated_scaled_means = zeros(6,4);
 scaled_means = zeros(6,4);
 real_means = zeros(6,4);
@@ -533,8 +607,8 @@ file_root = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\Proce
 for i = 1:6
     load([file_root,intervention_arr(i)])
     for p = 1:2 % for each person
-        idx = find(final_estimates_labels(:,2) == i);
-        estimated_impact_times = final_estimates_labels(idx,1);
+        idx = find(clean_final_estimates_labels(:,2) == p);
+        estimated_impact_times = clean_final_estimates_labels(idx,1);
         
         % calculate all step times from impact times
         step_times = [];
@@ -552,24 +626,26 @@ for i = 1:6
         [bigprop,~] = max(proportion);
         person_idx = (p-1)*2+1;
         if (1-bigprop) < abs(0.5-bigprop)
-            estimated_scaled_means(i,person_idx) = mu(1) + (mu(2)-mu(1))*(1- (proportion(1))^2);
-            estimated_scaled_means(i,person_idx+1) = mu(2) + (mu(1)-mu(2))*(1- (proportion(2))^2);
+            mean1 = mu(1) + (mu(2)-mu(1))*(1- (proportion(1))^2);
+            mean2 = mu(2) + (mu(1)-mu(2))*(1- (proportion(2))^2);
         else
-            estimated_scaled_means(i,person_idx) = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
-            estimated_scaled_means(i,person_idx+1) = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
+            mean1 = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
+            mean2 = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
         end
+        estimated_scaled_means(i,person_idx) = min(mean1,mean2);
+        estimated_scaled_means(i,person_idx+1) = max(mean1,mean2);
         
         % calculate real step times
         left_right_diff = [];
         right_left_diff = [];
         real_differences = [];
-        real_idx = find(impacts(:,4) == person_idx | impacts(:,4) == (person_idx+1));
-        real_impact_times = impacts(real_idx,1)./Fs_fsr;
-        for i = 2:length(real_impact_times)
-            if walk_edges(i) ~= -1 % not the start of a new segment
-                real_diff = real_impact_times(i)-real_impact_times(i-1);
+        real_idx = find(clean_impacts(:,4) == person_idx | clean_impacts(:,4) == (person_idx+1));
+        real_impact_times = clean_impacts(real_idx,1)./Fs_fsr;
+        for x = 2:length(real_impact_times)
+            real_diff = real_impact_times(x)-real_impact_times(x-1);
+            if real_diff < 1.5 % not a turning point
                 real_differences(end+1) = real_diff;
-                if mod(impacts(real_idx(i),4),2) == 0 % right foot
+                if mod(clean_impacts(real_idx(x),4),2) == 0 % right foot
                     left_right_diff(end+1) = real_diff;
                 else
                     right_left_diff(end+1) = real_diff;
@@ -583,16 +659,20 @@ for i = 1:6
         mu = GM.mu;
         [bigprop,~] = max(proportion);
         if (1-bigprop) < abs(0.5-bigprop)
-            scaled_means(i,person_idx) = mu(1) + (mu(2)-mu(1))*(1- (proportion(1))^2);
-            scaled_means(i,person_idx+1) = mu(2) + (mu(1)-mu(2))*(1- (proportion(2))^2);
+            mean1 = mu(1) + (mu(2)-mu(1))*(1- (proportion(1))^2);
+            mean2 = mu(2) + (mu(1)-mu(2))*(1- (proportion(2))^2);
         else
-            scaled_means(i,person_idx) = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
-            scaled_means(i,person_idx+1) = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
+            mean1 = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
+            mean2 = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
         end
+        scaled_means(i,person_idx) = min(mean1,mean2);
+        scaled_means(i,person_idx+1) = max(mean1,mean2);
         
         % real step times average & std
-        real_means(i,person_idx) = mean(left_right_diff);
-        real_means(i,person_idx+1) = mean(right_left_diff);
+        mean1 = mean(left_right_diff);
+        mean2 = mean(right_left_diff);
+        real_means(i,person_idx) = min(mean1,mean2);
+        real_means(i,person_idx+1) = max(mean1,mean2);
         real_std(i,person_idx) = std(left_right_diff);
         real_std(i,person_idx+1) = std(right_left_diff);
     end

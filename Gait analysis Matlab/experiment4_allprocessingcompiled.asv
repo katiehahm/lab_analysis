@@ -242,7 +242,8 @@ arrival_window = 3000; % 5000/Fs_pcb width of window to find arrival time
 impact_time_thresh = 0.1; % if two impacts are 0.1s within each other, combine
 correct_thresh = 0.05; % if predicted is within this thresh to real impact time, it's correct
 
-for w = 2:length(segments) % for each walking segment
+% for w = 2:length(segments) % for each walking segment
+for w=16:16
     start_time = impacts(segments(w-1),1)/Fs_fsr-0.15;
     stop_time = impacts(segments(w)-1,1)/Fs_fsr+0.15;
     
@@ -355,54 +356,60 @@ for w = 2:length(segments) % for each walking segment
 end
 
 final_estimates(1,:) = []; % from initialization
-save(filename,'final_estimates','-append')
+% save(filename,'final_estimates','-append')
 % edited for this file up to here, lower code is still just copied
 % ################################################
 %% using above, look at all combinations, find one with min uncertainty
 % will take a long time to run
 
 % close all
-final_estimates_labels = [0,0];
+final_estimates_labels = [0,0,0];
 for s = 2:length(segments)
+% for s = 11:11
     start_index = segments(s-1);
     stop_index = segments(s)-1;
 
     step_times_idx = find(final_estimates(:,2) == s);
     orig_step_times = final_estimates(step_times_idx,1)./Fs_pcb;
     
-    curr_ID_labels = ID_labels(start_index:stop_index);
+    real_labels = ID_labels(start_index:stop_index);
     real_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
     
 %     shorten the search by cutting segments in half
     half_idx = floor(length(real_impact_times)/2);
+    if (real_impact_times(half_idx+1) - real_impact_times(half_idx)) < 0.1
+        half_idx = half_idx + 1;
+    end
     half_time = real_impact_times(half_idx);
     
     real_idx = find(real_impact_times <= half_time);
     step_times_idx = find(orig_step_times <= (half_time+0.1)); % includes a buffer for time cutoff
-    [estimateID, step_times] = recursive_stepID(curr_ID_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
+    [estimateID1, step_times1] = recursive_stepID(real_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
 
 %     [estimateID, step_times] = recursive_stepID(curr_ID_labels, real_impact_times, sort(step_times),step_o,step_x);
 
     
     title(sprintf('Final estimated ID labels %d segment'),s)
     
-    for i = 1:length(step_times)
-        add_array = [step_times(i),estimateID(i)];
-        final_estimates_labels = [final_estimates_labels; add_array];
-    end
+%     for i = 1:length(step_times)
+%         add_array = [step_times(i),estimateID(i),s];
+%         final_estimates_labels = [final_estimates_labels; add_array];
+%     end
     
     % second half
     real_idx = find(real_impact_times > half_time);
     step_times_idx = find(orig_step_times > (half_time-0.1)); % includes a buffer for time cutoff
-    [estimateID, step_times] = recursive_stepID(curr_ID_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
+    [estimateID2, step_times2] = recursive_stepID(real_labels(real_idx), real_impact_times(real_idx), sort(orig_step_times(step_times_idx)),step_o,step_x);
 
 %     [estimateID, step_times] = recursive_stepID(curr_ID_labels, real_impact_times, sort(step_times),step_o,step_x);
 
     
     title(sprintf('Final estimated ID labels %d segment'),s)
     
+    [estimateID, step_times] = recursive_stepID_noperms(real_labels, real_impact_times, [estimateID1,estimateID2], [step_times1;step_times2], step_o, step_x);
+    
     for i = 1:length(step_times)
-        add_array = [step_times(i),estimateID(i)];
+        add_array = [step_times(i),estimateID(i),s];
         final_estimates_labels = [final_estimates_labels; add_array];
     end
     
@@ -426,75 +433,166 @@ plot(final_estimates_labels(est_x,1),0.5,'rx')
 
 % save(filename,'final_estimates_labels','-append')
 
-%% evaluate final_estimates_labels (4/22/22)
+%% manually remove beg/end of segments that are extra impacts (4/25/22)
+% clean_... means start/end of segments that don't match have been removed
+
+% go off of the large figure from above
+remove_est = [1.23391,8.15922,16.8232,51.7814,63.6929,74.0995,83.783,90.9295,103.721,110.536,129.128]; % seconds
+remove_real = [42.9097,51.8906,79.8424,80.4127,94.0849,90.9191,94.8814,103.737]; % seconds
+
+clean_final_estimates_labels = final_estimates_labels;
+remove_est_idx = [];
+for i = 1:length(remove_est)
+    [~,change_idx] = min(abs(final_estimates_labels(:,1) - remove_est(i)));
+    remove_est_idx(end+1) = change_idx;
+end
+clean_final_estimates_labels(remove_est_idx,:) = [];
+
+clean_impacts = impacts;
+clean_ID_labels = ID_labels;
+remove_real_idx = [];
+for i = 1:length(remove_real)
+    [~,change_idx] = min(abs(impacts(:,1)./Fs_fsr - remove_real(i)));
+    remove_real_idx(end+1) = change_idx;
+end
+clean_impacts(remove_real_idx,:) = [];
+clean_ID_labels(remove_real_idx) = [];
+
+% plot results
+figure;
+real_o = find(clean_ID_labels == 1);
+real_x = find(clean_ID_labels == 2);
+plot(clean_impacts(real_o,1)./Fs_fsr,0,'bo')
+hold on
+plot(clean_impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-1 1])
+
+est_o = find(clean_final_estimates_labels(:,2) == 1);
+est_x = find(clean_final_estimates_labels(:,2) == 2);
+
+plot(clean_final_estimates_labels(est_o,1),0.5,'ro')
+plot(clean_final_estimates_labels(est_x,1),0.5,'rx')
+
+save(filename,'clean_final_estimates_labels','clean_impacts','clean_ID_labels','-append')
+%% evaluate clean_final_estimates_labels (4/22/22)
 
 segmentN = length(segments)-1;
 false_pos = zeros(1,segmentN);
 false_neg = zeros(1,segmentN);
 true_pos = zeros(1,segmentN);
 rmse = zeros(1,segmentN);
+error_thresh = 0.05;
 
-for i=2:length(segments)
+big_false_pos = zeros(1,segmentN);
+big_false_neg = zeros(1,segmentN);
+big_true_pos = zeros(1,segmentN);
+big_rmse = zeros(1,segmentN);
+big_error_thresh = 0.1;
+
+for s = 2:length(segments)
     
     curr_false_pos = 0;
     curr_false_neg = 0;
     curr_true_pos = 0;
     curr_rmse = 0;
     
+    big_curr_false_pos = 0;
+    big_curr_false_neg = 0;
+    big_curr_true_pos = 0;
+    big_curr_rmse = 0;
+    
     start_index = segments(s-1);
     stop_index = segments(s)-1;
+    start_time = impacts(start_index,1)./Fs_fsr;
+    stop_time = impacts(stop_index,1)./Fs_fsr;
     
-    curr_ID_labels = ID_labels(start_index:stop_index);
-    curr_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
+    clean_idx = find(clean_impacts(:,1)./Fs_fsr >= start_time & clean_impacts(:,1)./Fs_fsr <= stop_time);
     
-    final_estimates_idx = find(final_estimates_labels(:,1) >= curr_impact_times(1) & final_estimates_labels(:,1) <= curr_impact_times(end));
-    curr_estimate_times = final_estimates_labels(final_estimates_idx,1);
-    curr_estimate_labels = final_estimates_labels(final_estimates_idx,2);
+    real_labels = clean_ID_labels(clean_idx);
+    real_times = clean_impacts(clean_idx,1)./Fs_fsr;
     
-    totalN = length(curr_impact_times);
-    for t = 1:totalN
-        curr_time = curr_impact_times(t); % real impact time
-        curr_label = curr_ID_labels(t);
-        diff = abs(curr_estimate_times - curr_time);
-        diff_idx = find(diff < 0.05); % 0.05 error threshold!!!!
+    final_estimates_idx = find(clean_final_estimates_labels(:,3) == s); % find labels belonging to this segment number
+    estimate_times = clean_final_estimates_labels(final_estimates_idx,1);
+    estimate_labels = clean_final_estimates_labels(final_estimates_idx,2);
+    
+    realN = length(real_times);
+    estN = length(estimate_times);
+    
+    % compare each real time with estimated times to find true+ & false-
+    for t = 1:realN
+        curr_time = real_times(t); % real impact time
+        curr_label = real_labels(t);
+        diff = abs(estimate_times - curr_time);
+        diff_idx = find(diff < error_thresh);
         if ~isempty(diff_idx) % if a estimated impact exists close to the real impact time
-            est_idx = find(curr_estimate_labels(diff_idx)==curr_label);
+            est_idx = find(estimate_labels(diff_idx)==curr_label);
             if ~isempty(est_idx) % if the close impact is labeled correctly
                 curr_true_pos = curr_true_pos + 1;
-                est_times = curr_estimate_times(diff_idx);
+                est_times = estimate_times(diff_idx);
                 est_time = est_times(est_idx);
-                curr_rmse = curr_rmse + (curr_time - est_time)^2;
+                curr_rmse = curr_rmse + (curr_time - est_time)^2; % rmse calculation
             else
                 curr_false_neg = curr_false_neg + 1;
             end
         else
             curr_false_neg = curr_false_neg + 1;
         end
+        
+        diff_idx = find(diff < big_error_thresh);
+        if ~isempty(diff_idx) % if a estimated impact exists close to the real impact time
+            est_idx = find(estimate_labels(diff_idx)==curr_label);
+            if ~isempty(est_idx) % if the close impact is labeled correctly
+                big_curr_true_pos = big_curr_true_pos + 1;
+                est_times = estimate_times(diff_idx);
+                est_time = est_times(est_idx);
+                big_curr_rmse = big_curr_rmse + (curr_time - est_time)^2; % rmse calculation
+            else
+                big_curr_false_neg = big_curr_false_neg + 1;
+            end
+        else
+            big_curr_false_neg = big_curr_false_neg + 1;
+        end
     end
     
-    est_totalN = length(curr_estimate_times);
-    for t = 1:est_totalN
-        curr_est_time = curr_estimate_times(t); % estimated impact time
-        curr_est_label = curr_estimate_labels(t);
-        diff = abs(curr_impact_times - curr_est_time);
-        diff_idx = find(diff < 0.05);
-        if isempty(diff_idx)
-            first_same_label = find(curr_ID_labels == curr_est_label);
-            first_same_label_time = curr_impact_times(first_same_label(1));
-            if first_same_label_time < curr_est_time
+    % compare each est time with real times to find false+
+    for t = 1:estN
+        curr_est_time = estimate_times(t); % estimated impact time
+        curr_est_label = estimate_labels(t);
+        diff = abs(real_times - curr_est_time);
+        diff_idx = find(diff < error_thresh);
+        if ~isempty(diff_idx)
+            real_idx = find(real_labels(diff_idx)==curr_est_label);
+            if isempty(real_idx)
                 curr_false_pos = curr_false_pos + 1;
             end
+        else
+            curr_false_pos = curr_false_pos + 1;
+        end
+        
+        diff_idx = find(diff < big_error_thresh);
+        if ~isempty(diff_idx)
+            real_idx = find(real_labels(diff_idx)==curr_est_label);
+            if isempty(real_idx)
+                big_curr_false_pos = big_curr_false_pos + 1;
+            end
+        else
+            big_curr_false_pos = big_curr_false_pos + 1;
         end
     end
     
     % store
-    false_pos(i-1) = curr_false_pos/est_totalN;
-    false_neg(i-1) = curr_false_neg/totalN;
-    true_pos(i-1) = curr_true_pos/totalN;
-    rmse(i-1) = curr_rmse/curr_true_pos;
+    false_pos(s-1) = curr_false_pos/estN;
+    false_neg(s-1) = curr_false_neg/realN;
+    true_pos(s-1) = curr_true_pos/realN;
+    rmse(s-1) = sqrt(curr_rmse/curr_true_pos);
+    
+    big_false_pos(s-1) = big_curr_false_pos/estN;
+    big_false_neg(s-1) = big_curr_false_neg/realN;
+    big_true_pos(s-1) = big_curr_true_pos/realN;
+    big_rmse(s-1) = sqrt(big_curr_rmse/big_curr_true_pos);
 end
 
-
+save(filename,'false_pos','false_neg','true_pos','rmse','big_false_pos','big_false_neg','big_true_pos','big_rmse','-append')
 
 %% perform GMM on these estimated step times
 % load processed data 2x workspace files
@@ -506,11 +604,11 @@ real_std = zeros(6,4);
 intervention_arr = ['regular1','limp1','limp2','weight1','weight2','regular2'];
 file_root = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_';
 
-for i = 1:6
-    load([file_root,intervention_arr(i)])
+% for i = 1:6
+%     load([file_root,intervention_arr(i)])
     for p = 1:2 % for each person
-        idx = find(final_estimates_labels(:,2) == i);
-        estimated_impact_times = final_estimates_labels(idx,1);
+        idx = find(clean_final_estimates_labels(:,2) == p);
+        estimated_impact_times = clean_final_estimates_labels(idx,1);
         
         % calculate all step times from impact times
         step_times = [];
@@ -572,7 +670,7 @@ for i = 1:6
         real_std(i,person_idx) = std(left_right_diff);
         real_std(i,person_idx+1) = std(right_left_diff);
     end
-end
+% end
 
 % save(filename,'estimated_scaled_means','scaled_means','real_means','real_std','-append')
 
