@@ -78,15 +78,15 @@ set(gcf,'Position',[100 100 500 200])
 
 % perform adding impact first (more accurate?)
 % if any step time is 1.5x larger than largest step time, missing an impact
-% diff_matrix(idx,:) % uncomment to debug !!!!!!!!!!!!!!!
+diff_matrix(idx,:) % uncomment to debug !!!!!!!!!!!!!!!!!
 % diff_matrix(idx,est_o)
 bigidxone = find(diff_matrix(idx,est_o) > step_o*1.45);
 % diff_matrix(idx,est_x)
 bigidxtwo = find(diff_matrix(idx,est_x) > step_x*1.45);
-bigidx = sort([est_o(bigidxone); est_x(bigidxtwo)]);
+bigidx = sort([est_o(bigidxone), est_x(bigidxtwo)]);
 if ~isempty(bigidx)
     [change_val,~] = max(bigidx);
-%     change_val % uncomment to debug!!!!!!!!
+    change_val % uncomment to debug!!!!!!!!
     % add element at bigidx-1 to duplicate it
     if step_times(bigidx(1)) == step_times(bigidx(1)-1) % if current one is overlap, add element at bigidx-2
         step_times = [step_times(1:bigidx(1)-2); step_times(bigidx(1)-2:end)];

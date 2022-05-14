@@ -93,7 +93,7 @@ def maximization_step(X, clusters):
         
         N_k = np.sum(gamma_nk, axis=0)
         
-        pi_k = 0.5 # CHANGED
+        pi_k = 0.5 # CHANGED #############################
         # pi_k = N_k / N # original
         mu_k = np.sum(gamma_nk * X, axis=0) / N_k
         

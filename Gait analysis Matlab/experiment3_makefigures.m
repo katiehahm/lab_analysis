@@ -10,7 +10,7 @@ load(string(data_root_katie3))
 load(string(data_root_katie))
 
 [accData, accTime, fsrData, fsrTime] = clip_accelfsr_fromMocap(Data, Time, Fs);
-[pcbData, pcbTime] = clip_pcb_fromMocap(datas, times);
+[pcbData, pcbTime] = clip_pcb_fromMocap(datas, times,4);
 
 t = 5; % 30 secs in
 t2 = 9;
@@ -63,13 +63,13 @@ subplot(4,1,4)
 % ylabel('Meters (m)')
 % title('X coordinate mocap data')
 % subplot(5,1,5)
-plot(mocapT(mci:mci2),mocapL(mci:mci2,2),'b')
+plot(mocapT(mci:mci2),mocapL(mci:mci2,1),'b')
 hold on
-plot(mocapT(mci:mci2),mocapR(mci:mci2,2),'r')
+plot(mocapT(mci:mci2),mocapR(mci:mci2,1),'r')
 legend('Left','Right')
 xlabel('Time (s)')
-ylabel('Meters (m)')
-title('Foot height from mocap data')
+ylabel('X-Coordinate (mm)')
+title('Foot location from mocap data')
 set(gca, 'FontName', 'Times New Roman')
 set(gca, 'FontSize', 13)
 
@@ -174,6 +174,37 @@ title('Comparison of measured and predicted SI')
 set(gca, 'FontName', 'Times New Roman')
 set(gca, 'FontSize', 15)
 
+%% show variation in step time data (for exponent slides) 5/3/22
+
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\subj1_brace2';
+load(string(data_root_katie))
+
+
+left_step = [];
+right_step = [];
+for i = 2:length(impacts)
+    diff = (impacts(i,1) - impacts(i-1,1))/296.2963;
+    if diff < 1
+        if impacts(i,4) == 0
+            left_step(end+1) = diff;
+        else
+            right_step(end+1) = diff;
+        end
+    end
+end
+        
+figure;
+plot(left_step)
+hold on
+plot(right_step,'r')
+title('Observed braced walking step time of each foot')
+xlabel('Time (s)')
+ylabel('Step time (s)')
+legend('Left step time','Right step time')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 15)
+xlim([0 90])
+
 %% signal dimming 12/23/21
 
 data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\subj1_regular1';
@@ -229,6 +260,57 @@ N = N + length(nonzeros(take));
 avg_TA4 = mean(nonzeros(real_grf));
 
 (avg_TA1+avg_TA2+avg_TA3+avg_TA4)/4
+
+%% TA average / range plot
+
+right_arr = ones(length(TA_reg1_R),1);
+left_arr = zeros(length(TA_reg1_R),1);
+data_root = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\subj';
+takes = {'regular1', 'brace1','brace2','weight1','weight2','regular2'};
+M = [];
+for i = 1:6
+    intervention = char(takes(i));
+    load([data_root,'2_',intervention])
+    
+    idx = find(acc_pks(:,4) == 1);
+    TA_R = acc_pks(idx,2);
+    idx = find(acc_pks(:,4) == 0);
+    TA_L = acc_pks(idx,2);
+    
+    right_arr = ones(length(TA_R),1);
+    left_arr = zeros(length(TA_L),1);
+    
+    name_arr_R = right_arr;
+    for x = 1:length(name_arr_R)
+        name_arr_R(x) = i;
+    end
+    
+    name_arr_L = left_arr;
+    for x = 1:length(name_arr_L)
+        name_arr_L(x) = i;
+    end
+    
+    M1 = [right_arr,name_arr_R,TA_R];
+    M2 = [left_arr,name_arr_L,TA_L];
+    
+    M = [M;M1;M2];
+
+end
+
+writematrix(M,'TAplot.csv')
+
+%% uncomment later
+tbl = readtable('TAplot.csv');
+takeOrder = {'1','2','3','4','5','6'};
+% tbl.Take = categorical(tbl.Take,takeOrder);
+figure;
+boxchart(tbl.Take,tbl.TA,'GroupByColor',tbl.Foot,'JitterOutliers','off')
+ylabel('Acceleration (g)')
+legend('Right Foot','Left Root')
+xticks([1,2,3,4,5,6]);
+xticklabels({'regular1','brace1','brace2','weight1','weight2','regular2'})
+title('Observed TA of each foot for one subject')
+set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',14)
 
 %% load subj3_brace1_sorted
 
@@ -503,7 +585,31 @@ scaled_means = [0.5532, 0.5426, 0.5533, 0.6447];
 sort_diff1 = sort(differences1);
 sort_diff2 = sort(differences2);
 
-% regular
+% regular modified
+data1 = sort_diff1(1:2:end);
+data1 = data1(1:round(length(data1)*0.95));
+data2 = sort_diff1(2:2:end);
+data2 = data2(round(length(data2)*0.05):end);
+figure;
+h1 = histfit(data1,10);
+h1(1).FaceColor = [.8 .8 1];
+h1(1).BarWidth = 1;
+% h1(1).FaceAlpha = 0.5;
+h1(2).Color = 'blue';
+hold on
+h2 = histfit(data2,11);
+h2(1).FaceColor = [1 .8 .8];
+h2(1).FaceAlpha = 0.5;
+h2(1).BarWidth = 1;
+h2(2).Color = 'red';
+title('Regular walking step time distribution')
+xlabel('Step time (s)')
+ylabel('Occurances')
+h = [h1(2);h2(2)];
+legend(h,'GMM Mixture 1','GMM Mixture 2')
+set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',14)
+
+%% regular
 pp_start1 = round(length(sort_diff1)*pptions(1));
 data1 = sort_diff1(1:pp_start1);
 data2 = sort_diff1(pp_start1+1:end);
