@@ -1,135 +1,49 @@
 % for use after experiment4_allprocessingcompiled.m
 % gets features and makes csv for localization estimation
-%% feature extraction 5/11/22
+%% feature extraction w/ cwt approach 5/14/22
 
+clear diff % clear this as a variable name
 % constants
 est_impactN = length(clean_final_estimates_labels);
 window_thresh = 0.0825; % seconds of how long an impact lasts
 start_idx_thresh = 1000; % count 1000 idx before curr_time to do aicpick
 freq_lower = 100; % Hz; frequency limits for cwt
 freq_higher = 350;
-noise_thresh = [0.000285,0.00026,0.00018,0.00026,0.00024,0.00056]; % determined empirically by looking at plot
-
-correct_estimates = [0,0,0];
-% find all correct impacts
-for i = 1:est_impactN
-    curr_time = clean_final_estimates_labels(i,1);
-    curr_label = clean_final_estimates_labels(i,2);
-    relevant_idx = find(clean_impacts(:,4) == (curr_label-1)*2 + 1 | clean_impacts(:,4) == (curr_label-1)*2 + 2);
-    if ~isempty(find(abs(clean_impacts(relevant_idx,1)./Fs_fsr - curr_time) < 0.05))
-        correct_estimates(end+1,:) = clean_final_estimates_labels(i,:);
-    end
-end
-correct_estimates(1,:) = [];
-correctN = length(correct_estimates);
-
-% initialize feature arrays
-est_coordinates = zeros(correctN,2);
-est_arrival_idx = zeros(correctN,sensorN);
-est_last_idx = zeros(correctN,sensorN);
-est_peak_idx = zeros(correctN,sensorN);
-est_peak_mag = zeros(correctN,sensorN);
-est_energy = zeros(correctN,sensorN);
-est_cwt_energy = zeros(correctN,sensorN);
-est_overlapping = zeros(correctN,1); % value = 1 if two impacts overlap
-
-% filter pcb signal
-filt_pcbD = lpf_data(pcbData);
-
-% extract values
-for i = 1:correctN
-    curr_time = correct_estimates(i,1);
-    curr_idx = round(curr_time*Fs_pcb);
-    % check if overlapping
-    if i~= correctN & curr_time == correct_estimates(i+1,1)
-        est_overlapping(i) = 1;
-        est_overlapping(i+1) = 1;
-    % if not overlapping
-    elseif est_overlapping(i) == 0
-        for s = 1:sensorN
-            % extract features from this impact
-            curr_label = correct_estimates(i,2);
-            % define window end
-            if i ~= correctN % if it isn't the last impact
-                window_end = correct_estimates(i+1,1);
-            else % last impact
-                window_end = length(pcbData)/Fs_pcb;
-            end
-            window = filt_pcbD(curr_idx:round(window_end*Fs_pcb),s);
-            noise = noise_thresh(s);
-            if ~isempty(window)
-                [up,lo] = envelope(window,300,'peak');
-                indeces = find(up < noise);
-                while isempty(indeces)
-                    noise = noise + 0.00001;
-                    indeces = find(up < noise);
-                end
-                last_idx = indeces(1) + curr_idx;
-            end
-            est_last_idx(i,s) = last_idx;
-            % define window start
-            start_idx = round(curr_idx - start_idx_thresh);
-            curr_window = filt_pcbD(start_idx:last_idx,s);
-            % extract arrival time
-            est_arrival_idx(i,s) = aic_pick(curr_window, 'to_peak')+start_idx;
-            curr_window = filt_pcbD(est_arrival_idx(i,s):last_idx,s);
-            % extract peak mag
-            [maxval, maxidx] = max(curr_window);
-            est_peak_mag(i,s) = maxval;
-            est_peak_idx(i,s) = maxidx + start_idx - 1;
-            % extract energy
-            est_energy(i,s) = sum(abs(curr_window).^2);
-            % extract cwt energy
-            [wt,f] = cwt(curr_window, Fs_pcb);
-            valid_f_idx = find(freq_higher & f > freq_lower);
-            cwt_mag = abs(wt(valid_f_idx,:));
-            sum_cwt = sum(cwt_mag,1);
-            sum_smooth_cwt = movmean(sum_cwt, 800);
-            est_cwt_energy(i,s) = sum(abs(sum_smooth_cwt));
-        end
-        % extract ground truth coordinates
-        Limpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 1));
-        Rimpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 2));
-        [Lminval,Lcorresponding_real_idx] = min(abs(clean_impacts(Limpact_idx,1)/Fs_fsr - curr_time));
-        [Rminval,Rcorresponding_real_idx] = min(abs(clean_impacts(Rimpact_idx,1)/Fs_fsr - curr_time));
-        mocap_idx = round(Fs_mocap*(curr_time + 0.05)); % delay for the heel to get "settled"
-        if Lminval < Rminval
-            mocap_label = (curr_label - 1)*2 + 2;
-        else
-            mocap_label = (curr_label - 1)*2 + 1;
-        end
-        est_coordinates(i,:) = [allmocap(mocap_idx,1,mocap_label), allmocap(mocap_idx,3,mocap_label)];
-    end
-end
-
-%% trying above feature extraction w/ cwt approach, similar code 5/14/22
-
-% constants
-est_impactN = length(clean_final_estimates_labels);
-window_thresh = 0.0825; % seconds of how long an impact lasts
-start_idx_thresh = 1000; % count 1000 idx before curr_time to do aicpick
-freq_lower = 100; % Hz; frequency limits for cwt
-freq_higher = 350;
-noise_thresh = [0.000285,0.00026,0.00018,0.00026,0.00024,0.00056]; % determined empirically by looking at plot
+% noise_thresh = [0.000285,0.00026,0.00018,0.00026,0.00024,0.00056]; % determined empirically by looking at plot
 
 correct_estimates = [0,0,0];
 correct_coords = [0,0,0];
+correct_ta = [0];
 % find all correct impacts & ground truth coords
 for i = 1:est_impactN
     curr_time = clean_final_estimates_labels(i,1);
     curr_label = clean_final_estimates_labels(i,2);
-    relevant_idx = find(clean_impacts(:,4) == (curr_label-1)*2 + 1 | clean_impacts(:,4) == (curr_label-1)*2 + 2);
-    close_arr = find(abs(clean_impacts(relevant_idx,1)./Fs_fsr - curr_time) < 0.05);
-    if ~isempty(close_arr)
-        correct_estimates(end+1,:) = clean_final_estimates_labels(i,:);
-        real_time = clean_impacts(relevant_idx(close_arr(1)),1)/Fs_fsr;
-        foot_label = clean_impacts(relevant_idx(close_arr(1)),4);
-        coords = [allmocap(round(real_time*Fs_mocap),1,foot_label),allmocap(round(real_time*Fs_mocap),3,foot_label),foot_label];
-        correct_coords(end+1,:) = coords;
+    if curr_label == 1 | curr_label == 2
+        curr_label = 1;
+    else
+        curr_label = 2;
     end
+    relevant_idx = find(impacts(:,4) == (curr_label-1)*2 + 1 | impacts(:,4) == (curr_label-1)*2 + 2);
+    [time_diff,close_minidx] = min(abs(impacts(relevant_idx,1)./Fs_fsr - curr_time));
+    if time_diff < 0.05
+        correct_estimates(end+1,:) = clean_final_estimates_labels(i,:);
+        real_idx = relevant_idx(close_minidx);
+        foot_label = impacts(real_idx,4);
+        correct_coords(end+1,:) = [coordinates(real_idx,1),coordinates(real_idx,3),foot_label];
+        correct_ta(end+1,:) = acc_pks(real_idx,2); % get Y accel (check?)
+    end
+%     close_arr = find(abs(clean_impacts(relevant_idx,1)./Fs_fsr - curr_time) < 0.05);
+%     if ~isempty(close_arr)
+%         correct_estimates(end+1,:) = clean_final_estimates_labels(i,:);
+%         real_time = clean_impacts(relevant_idx(close_arr(1)),1)/Fs_fsr;
+%         foot_label = clean_impacts(relevant_idx(close_arr(1)),4);
+%         coords = [allmocap(round(real_time*Fs_mocap),1,foot_label),allmocap(round(real_time*Fs_mocap),3,foot_label),foot_label];
+%         correct_coords(end+1,:) = coords;
+%     end
 end
 correct_estimates(1,:) = [];
 correct_coords(1,:) = [];
+correct_ta(1,:) = [];
 correctN = length(correct_estimates);
 
 % initialize feature arrays
@@ -143,9 +57,6 @@ est_cwt_energy = zeros(correctN,sensorN);
 est_cwt_peak = zeros(correctN,sensorN);
 est_overlapping = zeros(correctN,1); % value = 1 if two impacts overlap
 
-% filter pcb signal
-filt_pcbD = lpf_data(pcbData);
-
 segments_list = unique(correct_estimates(:,3));
 segmentsN = segments_list(end)-segments_list(1) + 1;
 % extract values
@@ -158,7 +69,7 @@ for seg = 1:segmentsN
         not_overlap = [];
         first_idx = round((seg_estimates(1,1)-0.5)*Fs_pcb);
         last_idx = round((seg_estimates(estimatesN,1)+0.5)*Fs_pcb);
-        seg_pcb = filt_pcbD(first_idx:last_idx,s);
+        seg_pcb = wien_pcbD(first_idx:last_idx,s);
         [wt,f] = cwt(seg_pcb,Fs_pcb);
         valid_f_idx = find(freq_higher & f > freq_lower);
         cwt_mag = abs(wt(valid_f_idx,:));
@@ -207,23 +118,28 @@ for seg = 1:segmentsN
                 est_last_idx(seg_idx(i),s) = abs_last_idx;
                 % cwt energy
                 if (abs_last_idx - arrival_idx) > 10 % sometimes peak is so small it's a straight line, then last idx is right after arrival idx
-                    window2 = filt_pcbD(arrival_idx:abs_last_idx,s);
+                    window2 = wien_pcbD(arrival_idx:abs_last_idx,s);
                     [wt2,f2] = cwt(window2,Fs_pcb);
                     valid_f_idx2 = find(freq_higher & f2 > freq_lower);
                     cwt_mag2 = abs(wt2(valid_f_idx2,:));
                     sum_cwt2 = sum(cwt_mag2,1);
                     sum_smooth_cwt2 = movmean(sum_cwt2, 800);
-                    est_cwt_energy(seg_idx(i),s) = sum(sum_smooth_cwt2);
+                    est_cwt_energy(seg_idx(i),s) = sum(sum_smooth_cwt2.^2);
                     % peak mag
-                    est_peak_mag(seg_idx(i),s) = max(window);
+                    est_peak_mag(seg_idx(i),s) = max(abs(window2));
                     % peak cwt mag
                     est_cwt_peak(seg_idx(i),s) = max(sum_smooth_cwt2);
                     % energy
-                    est_energy(seg_idx(i),s) = sum(abs(window).^2);
+                    est_energy(seg_idx(i),s) = sum(abs(window2).^2);
                 end
                 % ground truth coordinates
                 curr_time = correct_estimates(seg_idx(i),1);
                 curr_label = correct_estimates(seg_idx(i),2);
+                if curr_label == 1 | curr_label == 2
+                    curr_label = 1;
+                else
+                    curr_label = 2;
+                end
                 Limpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 1));
                 Rimpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 2));
                 [Lminval,Lcorresponding_real_idx] = min(abs(clean_impacts(Limpact_idx,1)/Fs_fsr - curr_time));
@@ -248,6 +164,98 @@ for seg = 1:segmentsN
     end
 end
 
+%% interpolation for overlapping impacts (without wiener) 5/17/22
+
+overlap_idx = find(est_overlapping == 1);
+for i = 3:length(overlap_idx) % 3 bc first segment is trash
+    curr_idx = overlap_idx(i);
+    curr_label = correct_estimates(curr_idx,2);
+    if curr_label == 1 | curr_label == 2
+        curr_label = 1;
+    else
+        curr_label = 2;
+    end
+    % find last impact with same label
+    prev_idx = curr_idx - 1;
+    prev_label = correct_estimates(prev_idx,2);
+    if prev_label == 1 | prev_label == 2
+        prev_label = 1;
+    else
+        prev_label = 2;
+    end
+    while prev_label ~= curr_label | est_overlapping(prev_idx) == 1
+        prev_idx = prev_idx - 1;
+        if prev_idx > 0
+            prev_label = correct_estimates(prev_idx,2);
+        else
+            disp("Overlapping at start of impact")
+            curr_idx
+            break;
+        end
+    end
+    % find next impact with same label
+    next_label = correct_estimates(curr_idx+1,2);
+    if next_label == 1 | next_label == 2
+        next_label = 1;
+    else
+        next_label = 2;
+    end
+    next_idx = curr_idx + 1;
+    while next_label ~= curr_label | est_overlapping(next_idx) == 1
+        next_idx = next_idx + 1;
+        if next_idx < correctN
+            next_label = correct_estimates(next_idx,2);
+        else
+            disp("Overlapping at end of impact")
+            curr_idx
+            break;
+        end
+    end
+    for s = 1:sensorN
+        % get current overlapping clip, using same technique as above
+        arrival_idx = round(correct_estimates(curr_idx,1)*Fs_pcb);
+        est_arrival_idx(curr_idx,s) = arrival_idx;
+        next_arrival_idx = curr_idx+1;
+        next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
+        while est_arrival_idx(curr_idx,s) == next_arrival
+            next_arrival_idx = next_arrival_idx+1;
+            next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
+        end
+        [lasti,nextimpact] = min([round(correct_estimates(next_arrival_idx,1)*Fs_pcb),arrival_idx + round(0.46*Fs_pcb)]);
+        window = wien_pcbD(arrival_idx:lasti,s);
+        [wt,f] = cwt(window,Fs_pcb);
+        valid_f_idx = find(freq_higher & f > freq_lower);
+        cwt_mag = abs(wt(valid_f_idx,:));
+        sum_cwt = sum(cwt_mag,1);
+        sum_smooth_cwt = movmean(sum_cwt, 800);
+        deriv_window = movmean(diff(sum_smooth_cwt),1200);
+        [~,minidx] = min(deriv_window);
+        [~,zeroidx] = min(abs(deriv_window(minidx:end)));
+        abs_last_idx = zeroidx + minidx - 1 + arrival_idx;
+        est_last_idx(curr_idx,s) = abs_last_idx;
+        
+        % extract features w/ interpolate
+        est_peak_mag(curr_idx,s) = (est_peak_mag(prev_idx,s) + est_peak_mag(next_idx,s))/2;
+        est_energy(curr_idx,s) = (est_energy(prev_idx,s) + est_energy(next_idx,s))/2;
+        est_cwt_peak(curr_idx,s) = (est_cwt_peak(prev_idx,s) + est_cwt_peak(next_idx,s))/2;
+        est_cwt_energy(curr_idx,s) = (est_cwt_energy(prev_idx,s) + est_cwt_energy(next_idx,s))/2;
+    end
+    % extract ground truth coordinates
+    curr_time = correct_estimates(curr_idx,1);
+    Limpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 1));
+    Rimpact_idx = find(clean_impacts(:,4) == ((curr_label-1)*2 + 2));
+    [Lminval,Lcorresponding_real_idx] = min(abs(clean_impacts(Limpact_idx,1)/Fs_fsr - curr_time));
+    [Rminval,Rcorresponding_real_idx] = min(abs(clean_impacts(Rimpact_idx,1)/Fs_fsr - curr_time));
+    mocap_idx = round(Fs_mocap*(curr_time + 0.05)); % delay for the heel to get "settled"
+    if Lminval < Rminval
+        mocap_label = (curr_label - 1)*2 + 2;
+    else
+        mocap_label = (curr_label - 1)*2 + 1;
+    end
+    est_coordinates(curr_idx,:) = [allmocap(mocap_idx,1,mocap_label), allmocap(mocap_idx,3,mocap_label),mocap_label];
+end
+
+
 %% sanity check 5/13/22
 
 % to check if overlapping detection is correct
@@ -259,18 +267,18 @@ plot(correct_estimates(find(est_overlapping == 1),1),find(est_overlapping == 1),
 
 % to test that missing features are only due to overlapping impacts
 % should run bc the arrays are same length
-arrival_zeros = find(est_arrival_idx(:,1) == 0);
-figure;
-plot(arrival_zeros,find(est_overlapping == 1))
+% arrival_zeros = find(est_arrival_idx(:,1) == 0);
+% figure;
+% plot(arrival_zeros,find(est_overlapping == 1))
 
 % to check if impact window is accurate
 arrival_nonzeros = find(est_arrival_idx(:,1) ~= 0);
 for s = 1:sensorN
     figure;
-    plot(pcbTime, filt_pcbD(:,s))
+    plot(pcbTime, wien_pcbD(:,s))
     hold on
-    plot(est_arrival_idx(arrival_nonzeros,s)./Fs_pcb,0,'rx','MarkerSize',14)
-    plot(est_last_idx(arrival_nonzeros,s)./Fs_pcb,0,'gx','MarkerSize',9)
+    plot(est_arrival_idx(:,s)./Fs_pcb,0,'rx','MarkerSize',14)
+    plot(est_last_idx(:,s)./Fs_pcb,0,'gx','MarkerSize',9)
 %     plot(correct_estimates(:,1),0,'cx')
 end
 
@@ -285,79 +293,322 @@ for i = 1:4
     plot(est_arrive*Fs_mocap,est_coord,'rx')
 end
 
+% check if peak & energy extraction are correct
+% zoom in to the signal, ignore the zero and negative values
+% peaks should match
+test_start = 100;
+test_end = 130;
+test_seg = wien_pcbD(est_arrival_idx(test_start,1):est_arrival_idx(test_end,1),1);
+[wt,f] = cwt(test_seg,Fs_pcb);
+valid_f_idx = find(freq_higher & f > freq_lower);
+cwt_mag = abs(wt(valid_f_idx,:));
+sum_cwt = sum(cwt_mag,1);
+sum_smooth_cwt = movmean(sum_cwt, 800);
+figure; plot(sum_smooth_cwt)
+hold on
+plot(est_arrival_idx(test_start:test_end,1)-est_arrival_idx(test_start,1),est_cwt_peak(test_start:test_end,1),'rx')
+est_cwt_energy(test_start:test_end,1)
+figure;
+plot(test_seg)
+hold on
+plot(est_arrival_idx(test_start:test_end,1)-est_arrival_idx(test_start,1),est_peak_mag(test_start:test_end,1),'rx')
+est_energy(test_start:test_end,1)
 
-%% wiener filter & interpolation for overlapping impacts 5/12/22
+%% save features to mat file
+save(filepath,'correct_coords','correct_estimates','est_arrival_idx','est_cwt_energy','est_cwt_peak','est_energy',...
+    'est_overlapping','est_peak_mag','est_last_idx','correct_ta','correctN','-append')
 
-overlap_idx = find(est_overlapping == 1);
-for i = 7:length(overlap_idx) % put 7 here bc first segment is trash
-    curr_idx = overlap_idx(i); % idx within length of clean_final...
-    data_idx = curr_idx*Fs_pcb; % idx within data segment
-    curr_time = clean_final_estimates_labels(curr_idx,1);
-    curr_label = clean_final_estimates_labels(curr_idx,2);
-    prev_labels = clean_final_estimates_labels(curr_idx-4:curr_idx-1,2);
-    prev_idx = find(prev_labels == curr_label);
-    % last_idx is idx of impacts, not idx of data
-    last_idx = curr_idx - 4 + prev_idx(end) - 1;
-    for s = 1:sensorN
-        % previous clip
-        prev_clip = filt_pcbD(est_arrival_idx(last_idx,s):est_last_idx(last_idx,s),s);
-        % get overlapping clip
-        window = filt_pcbD(data_idx:data_idx + Fs_pcb/2,s); % set window of 0.5s
-        noise = noise_thresh(s);
-        if ~isempty(window)
-            [up,lo] = envelope(window,300,'peak');
-            indeces = find(up < noise);
-            while isempty(indeces)
-                noise = noise + 0.00001;
-                indeces = find(up < noise);
+%% make localization csv with overlapping impacts for tracking 5/16/22
+
+featureV_p1 = zeros(1,53);
+featureV_p2 = zeros(1,53);
+
+trainValues = ones(correctN,2); % trainvalue label, person ID
+seg_array = unique(correct_estimates(:,3));
+% label starts of walking segments
+for i = 2:seg_array(end)
+    this_seg_idx = find(correct_estimates(:,3) == i);
+    person1_idx = find(correct_estimates(this_seg_idx,2) == 1);
+    person2_idx = find(correct_estimates(this_seg_idx,2) == 2);
+    trainValues(this_seg_idx(person1_idx(1)),:) = [0, 1];
+    trainValues(this_seg_idx(person2_idx(1)),:) = [0, 2];
+end
+
+% assign k-fold trainValue
+segN = seg_array(end)-1;
+seg_mod = round(segN/5); % use this as counter for mod calculations
+seg_count = 1;
+seg_new = false;
+for i = 1:correctN
+    % if not start of segment
+    if trainValues(i,1) ~= 0
+        curr_seg = correct_estimates(i,3)-1;
+        curr_person = correct_estimates(i,2);
+        if mod(curr_seg,seg_mod) ~= 0 | seg_count == 5
+            trainValues(i,:) = [seg_count,curr_person];
+            seg_new = true;
+        else
+            if seg_new == true % the first time segment has changed, increment
+                seg_count = seg_count + 1;
+                seg_new = false;
             end
-            data_last_idx = indeces(1) + data_idx;
+            trainValues(i,:) = [seg_count,curr_person];
         end
-        start_idx = round(data_idx - start_idx_thresh);
-        curr_window = filt_pcbD(start_idx:data_last_idx,s);
-        arrival_idx = aic_pick(curr_window, 'to_peak')+start_idx;
-        window = filt_pcbD(arrival_idx:data_last_idx,s);
-        est_arrival_idx(curr_idx,s) = arrival_idx;
-        est_last_idx(curr_idx,s) = data_last_idx;
-        % make clips same length
-        prev_clipL = length(prev_clip);
-        clipL = length(window);
-        if prev_clipL > clipL % if previous clip is longer than overlapping clip
-            % extend current clip
-            L_diff = prev_clipL - clipL;
-            window = filt_pcbD(arrival_idx - round(L_diff/2):data_last_idx + (L_diff - round(L_diff/2)),s);
-        else % previous clip is shorter than current overlapping clip
-            L_diff = clipL - prev_clipL;
-            prev_clip = filt_pcbD(est_arrival_idx(last_idx,s) - round(L_diff/2):est_last_idx(last_idx,s)+ (L_diff - round(L_diff/2)),s);
-            % set any added parts above noise threshold to be noise
-            make_noise = find(prev_clip(1:round(L_diff/2)) > noise_thresh(s));
-            prev_clip(make_noise) = noise_thresh(s);
-            make_noise = find(prev_clip(est_last_idx(last_idx,s):end) > noise_thresh(s));
-            prev_clip(make_noise + est_last_idx(last_idx,s) - 1) = noise_thresh(s);
-        end
-        % perform wiener filter
-        [yhat, ~] = wienerFilter(prev_clip,window,1,true,Fs_pcb);
-        % interpolate to find scaling factor
-        next_labels = clean_final_estimates_labels(curr_idx+1:curr_idx+4,2);
-        next_idx_list = find(next_labels == curr_label);
-        next_idx = curr_idx + 1 + next_idx_list(1) - 1;
-        next_peak_mag = est_peak_mag(next_idx,s);
-        prev_peak_mag = est_peak_mag(last_idx,s);
-        curr_peak_mag = (next_peak_mag+prev_peak_mag)/2;
-        est_peak_mag(curr_idx,s) = curr_peak_mag;
-        scaling_factor = curr_peak_mag/max(yhat);
-        yhat = yhat.*scaling_factor;
-        % extract energy from extracted signal
-        est_energy(curr_idx,s) = sum(abs(yhat).^2);
-        % extract cwt energy from extracted signal
-        [wt,f] = cwt(yhat, Fs_pcb);
-        valid_f_idx = find(freq_higher & f > freq_lower);
-        cwt_mag = abs(wt(valid_f_idx,:));
-        sum_cwt = sum(cwt_mag,1);
-        sum_smooth_cwt = movmean(sum_cwt, 800);
-        est_cwt_energy(curr_idx,s) = sum(abs(sum_smooth_cwt));
     end
 end
+
+for i = 1:correctN
+    % take, k-fold trainValue, xcoord, ta, {features}, {feature ratios},
+    % prev xcoord
+    if trainValues(i,1) == 0
+        feature = [1,0,correct_coords(i,1),abs(correct_ta(i)),est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:),zeros(1,25)];
+    else
+        % find prev index
+        prev_idx = i-1;
+        while correct_estimates(prev_idx,2) ~= correct_estimates(i,2)
+            prev_idx = prev_idx - 1;
+        end
+        diff_cwt_peak = est_cwt_peak(i,:) - est_cwt_peak(prev_idx,:);
+        diff_cwt_energy = est_cwt_energy(i,:) - est_cwt_energy(prev_idx,:);
+        diff_peak_mag = est_peak_mag(i,:) - est_peak_mag(prev_idx,:);
+        diff_energy = est_energy(i,:) - est_energy(prev_idx,:);
+        feature = [1,trainValues(i,1),correct_coords(i,1),abs(correct_ta(i)),...
+            est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:),...
+            diff_cwt_peak,diff_cwt_energy,diff_peak_mag,diff_energy,correct_coords(prev_idx,1)];
+    end
+    if correct_estimates(i,2) == 1
+        featureV_p1(end+1,:) = feature;
+    else
+        featureV_p2(end+1,:) = feature;
+    end
+end
+featureV_p1(1,:) = [];
+featureV_p2(1,:) = [];
+filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
+filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
+writematrix(featureV_p1,filename1)
+writematrix(featureV_p2,filename2)
+
+% then run exp4_recursive_localization.py OR
+% exp4_notrecursive_localization.py
+
+%% make TA csv with overlapping impacts 5/18/22
+
+filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\jenny1_trackingloc_regular1_p2_results.csv';
+T = readtable(filename);
+A = table2array(T);
+real_loc = A(:,1);
+predict_loc = A(:,2);
+
+filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular1_localization_p2_withta.csv';
+T = readtable(filename);
+A = table2array(T);
+ta_arr = A(:,4);
+features = A(:,5:28);
+
+s1 = [-3.590,-3.343];
+s2 = [-3.580,2.61];
+s3 = [3.639,2.11];
+s4 = [3.650,-3.412];
+% these are values from interpolating s1-4
+s5 = [3.61,2.36];
+s6 = [3.62,-3.3775];
+featureV = zeros(1,31);
+
+for i = 1:length(real_loc)
+    xcoord = predict_loc(i);
+    % only using x coord
+    % ############################################################## check!
+    dist1 = sqrt( (xcoord-s1(1)).^2 );
+    dist2 = sqrt( (xcoord-s2(1)).^2 );
+    dist3 = sqrt( (xcoord-s3(1)).^2 );
+    dist4 = sqrt( (xcoord-s4(1)).^2 );
+    dist5 = sqrt( (xcoord-s5(1)).^2 );
+    dist6 = sqrt( (xcoord-s6(1)).^2 );
+%     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
+%     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
+%     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
+%     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
+%     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
+%     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
+
+    % acc, dist 1-6, cwt peak, cwt energy, peak, energy
+    feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
+    featureV(end+1,:) = feature;
+end
+featureV(1,:) = [];
+filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular1_ta_p2.csv';
+writematrix(featureV,filename)
+
+% then run exp4_TAestimation.py
+
+%% make localization csv without overlapping impacts 5/16/22
+
+featureV_p1 = zeros(1,26);
+featureV_p2 = zeros(1,26);
+for i = 1:length(est_coordinates)
+    if est_overlapping(i) == 0 % not overlapping
+        feature = [correct_coords(i,1),abs(correct_ta(i)),est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:)];
+        if correct_estimates(i,2) == 1
+            featureV_p1(end+1,:) = feature;
+        else
+            featureV_p2(end+1,:) = feature;
+        end
+    end
+end
+featureV_p1(1,:) = [];
+featureV_p2(1,:) = [];
+filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
+filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
+writematrix(featureV_p1,filename1)
+writematrix(featureV_p2,filename2)
+
+%% make TA csv without overlapping impacts 5/16/22
+
+filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1';
+T = readtable([filename,'_results.csv']);
+A = table2array(T);
+real_loc = A(:,1);
+predict_loc = A(:,2);
+
+T = readtable([filename,'_withta.csv']);
+A = table2array(T);
+ta_arr = A(:,2);
+features = A(:,3:end);
+
+s1 = [-3.590,-3.343];
+s2 = [-3.580,2.61];
+s3 = [3.639,2.11];
+s4 = [3.650,-3.412];
+% these are values from interpolating s1-4
+s5 = [3.61,2.36];
+s6 = [3.62,-3.3775];
+featureV = zeros(1,31);
+
+for i = 1:length(real_loc)
+    xcoord = predict_loc(i);
+    % only using x coord
+    % ############################################################## check!
+    dist1 = sqrt( (xcoord-s1(1)).^2 );
+    dist2 = sqrt( (xcoord-s2(1)).^2 );
+    dist3 = sqrt( (xcoord-s3(1)).^2 );
+    dist4 = sqrt( (xcoord-s4(1)).^2 );
+    dist5 = sqrt( (xcoord-s5(1)).^2 );
+    dist6 = sqrt( (xcoord-s6(1)).^2 );
+%     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
+%     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
+%     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
+%     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
+%     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
+%     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
+
+    % acc, dist 1-6, cwt peak, cwt energy, peak, energy
+    feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
+    featureV(end+1,:) = feature;
+end
+featureV(1,:) = [];
+filename = [filename, '_TA.csv'];
+writematrix(featureV,filename)
+
+
+%% wiener filter & interpolation for overlapping impacts 5/17/22
+
+% overlap_idx = find(est_overlapping == 1);
+% for i = 7:length(overlap_idx) % put 7 here bc first segment is trash
+%     curr_idx = overlap_idx(i); % idx within length of clean_final...
+%     data_idx = curr_idx*Fs_pcb; % idx within data segment
+%     curr_time = correct_estimates(curr_idx,1);
+%     curr_label = correct_estimates(curr_idx,2);
+%     % find last impact with same label
+%     prev_idx = curr_idx - 1;
+%     prev_label = correct_estimates(prev_idx,2);
+%     while prev_label ~= curr_label | est_overlapping(prev_idx) == 1
+%         prev_idx = prev_idx - 1;
+%         if prev_idx > 0
+%             prev_label = correct_estimates(prev_idx,2);
+%         else
+%             disp("Overlapping at start of impact")
+%             quit()
+%         end
+%     end
+%     % find next impact with same label
+%     next_label = correct_estimates(curr_idx+1,2);
+%     next_idx = curr_idx + 1;
+%     while next_label ~= curr_label | est_overlapping(next_label) == 1
+%         next_idx = next_idx + 1;
+%         if next_idx < correctN
+%             next_label = correct_estimates(next_idx,2);
+%         else
+%             disp("Overlapping at end of impact")
+%             quit()
+%         end
+%     end
+%     for s = 1:sensorN
+%         % previous clip
+%         prev_clip = filt_pcbD(est_arrival_idx(prev_idx,s):est_last_idx(prev_idx,s),s);
+%         % next clip
+%         next_clip = filt_pcbD(est_arrival_idx(next_idx,s):est_last_idx(next_idx,s),s);
+%         % get current overlapping clip, using same technique as above
+%         arrival_idx = round(correct_estimates(curr_idx,1)*Fs_pcb);
+%         est_arrival_idx(curr_idx,s) = arrival_idx;
+%         next_arrival_idx = curr_idx+1;
+%         next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
+%         while est_arrival_idx(curr_idx,s) == next_arrival
+%             next_arrival_idx = next_arrival_idx+1;
+%             next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
+%         end
+%         [lasti,nextimpact] = min([round(correct_estimates(next_arrival_idx,1)*Fs_pcb),arrival_idx + round(0.46*Fs_pcb)]);
+%         window = filt_pcbD(arrival_idx:lasti,s);
+%         [wt,f] = cwt(window,Fs_pcb);
+%         valid_f_idx = find(freq_higher & f > freq_lower);
+%         cwt_mag = abs(wt(valid_f_idx,:));
+%         sum_cwt = sum(cwt_mag,1);
+%         sum_smooth_cwt = movmean(sum_cwt, 800);
+%         deriv_window = movmean(diff(sum_smooth_cwt),1200);
+%         [~,minidx] = min(deriv_window);
+%         [~,zeroidx] = min(abs(deriv_window(minidx:end)));
+%         abs_last_idx = zeroidx + minidx - 1 + arrival_idx;
+%         est_last_idx(curr_idx,s) = abs_last_idx;
+%         overlap_clip = filt_pcbD(arrival_idx:abs_last_idx,s);
+%         % make clips same length
+%         prev_clipL = length(prev_clip);
+%         next_clipL = length(next_clip);
+%         overlap_clipL = length(overlap_clip);
+%         [~,longclip] = max([prev_clipL,next_clipL,overlap_clipL]);
+%         if longclip == 1 % longest is prev clip
+%             next_clip = wiener_clipL_adjust(prev_clipL, next_clipL, s, filt_pcbD, est_arrival_idx(next_idx,s), est_last_idx(next_idx,s), noise_thresh(s));
+%             overlap_clip = wiener_clipL_adjust(prev_clipL, overlap_clipL, s, filt_pcbD, arrival_idx, abs_last_idx, noise_thresh(s));
+%         elseif longclip == 2 % longest is next clip
+%             prev_clip = wiener_clipL_adjust(next_clipL, prev_clipL, s, filt_pcbD, est_arrival_idx(prev_idx,s), est_last_idx(prev_idx,s), noise_thresh(s));
+%             overlap_clip = wiener_clipL_adjust(next_clipL, overlap_clipL, s, filt_pcbD, arrival_idx, abs_last_idx, noise_thresh(s));
+%         else % longest is overlapping clip
+%             prev_clip = wiener_clipL_adjust(overlap_clipL, prev_clipL, s, filt_pcbD, est_arrival_idx(prev_idx,s), est_last_idx(prev_idx,s), noise_thresh(s));
+%             next_clip = wiener_clipL_adjust(overlap_clipL, next_clipL, s, filt_pcbD, est_arrival_idx(next_idx,s), est_last_idx(next_idx,s), noise_thresh(s));
+%         end
+%         % perform wiener filter on closer clip
+%         if (next_idx - curr_idx) > (curr_idx - prev_idx)
+%             [yhat, ~] = wienerFilter(prev_clip,overlap_clip,1,true,Fs_pcb);
+%         else
+%             [yhat, ~] = wienerFilter(next_clip,overlap_clip,1,true,Fs_pcb);
+%         end
+%         % interpolate to find scaling factor
+%         new_mag = (max(abs(prev_clip)) + max(abs(next_clip)))/2;
+%         scaling_factor = new_mag/max(abs(yhat));
+%         yhat = yhat.*scaling_factor;
+%         % extract energy from extracted signal
+%         est_energy(curr_idx,s) = sum(abs(yhat).^2);
+%         % extract peak from extracted signal
+%         est_peak_mag(curr_idx,s) = new_mag;
+%         % extract cwt energy & peak from extracted signal
+%         [wt,f] = cwt(yhat, Fs_pcb);
+%         valid_f_idx = find(freq_higher & f > freq_lower);
+%         cwt_mag = abs(wt(valid_f_idx,:));
+%         sum_cwt = sum(cwt_mag,1);
+%         sum_smooth_cwt = movmean(sum_cwt, 800);
+%         est_cwt_energy(curr_idx,s) = sum(abs(sum_smooth_cwt));
+%         est_cwt_peak(curr_idx,s) = max(sum_smooth_cwt);
+%     end
+% end
 
 
 

@@ -88,28 +88,6 @@ if ~isempty(bigidx)
         prev_ID_idx = prev_ID_idx - 1;
         prev_ID = estimateID_LR(prev_ID_idx);
     end
-    curr_time = step_times(curr_idx);
-    prev_time = step_times(prev_ID_idx);
-    
-    if estimateID_LR(curr_idx) == 1
-        avg_diff = step_o1;
-    elseif estimateID_LR(curr_idx) == 2
-        avg_diff = step_o2;
-    elseif estimateID_LR(curr_idx) == 3
-        avg_diff = step_x1;
-    else
-        avg_diff = step_x2;
-    end
-    
-    between_times = step_times(prev_ID_idx+1:curr_idx-1);
-    between_scores = zeros(1,length(between_times));
-    for i = 1:length(between_times)
-        curr_diff = abs(curr_time - between_times(i));
-        prev_diff = abs(prev_time - between_times(i));
-        between_scores(i) = max([abs(curr_diff - avg_diff),abs(prev_diff - avg_diff)]);
-    end
-    [~,min_btwidx] = min(between_scores);
-    change_idx = min_btwidx + prev_ID_idx
     
     
 %     if estimateID_LR(curr_idx) == 1
@@ -121,7 +99,7 @@ if ~isempty(bigidx)
 %     else
 %         [~,change_idx] = min(abs(step_times(curr_idx)-step_times(1:curr_idx-1) - step_x2));
 %     end
-%     change_idx
+    change_idx
     
     if estimateID_LR(curr_idx) == 1
         new_ID = 2;
@@ -141,10 +119,10 @@ if ~isempty(bigidx)
 else
     % if all element in a column in diff_matrix is too small, delete, recursive
     % start from second element in both bc first element has diff = 0
-    smallidxone1 = find(diff_matrix(est_o1(2:end)) < step_o1/1.75); % THIS IS NOT 2
-    smallidxone2 = find(diff_matrix(est_o2(2:end)) < step_o2/1.65);
-    smallidxtwo1 = find(diff_matrix(est_x1(2:end)) < step_x1/1.58);
-    smallidxtwo2 = find(diff_matrix(est_x2(2:end)) < step_x2/1.58);
+    smallidxone1 = find(diff_matrix(est_o1(2:end)) < step_o1/1.55); % THIS IS NOT 2
+    smallidxone2 = find(diff_matrix(est_o2(2:end)) < step_o2/1.55);
+    smallidxtwo1 = find(diff_matrix(est_x1(2:end)) < step_x1/1.55);
+    smallidxtwo2 = find(diff_matrix(est_x2(2:end)) < step_x2/1.55);
     smallidx = sort([est_o1(smallidxone1+1),est_o2(smallidxone2+1),est_x1(smallidxtwo1+1),est_x2(smallidxtwo2+1)]); % weird that these are rows, bigidx is cols
     if ~isempty(smallidx)
         % delete element at smallidx or smallidx-1 depending on score

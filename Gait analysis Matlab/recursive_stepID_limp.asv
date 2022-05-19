@@ -1,4 +1,4 @@
-function [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2)
+function [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2)
 % recursively adds and takes out step times to match best step time outcome
 % used by experiment4_footfalldetection.m &
 % experiment4_allprocessingcompiled.m
@@ -166,12 +166,12 @@ est_o2 = find(label_allcombinations(idx,:) == 2);
 est_x1 = find(label_allcombinations(idx,:) == 3);
 est_x2 = find(label_allcombinations(idx,:) == 4);
 
-bigidxone1 = find(diff_matrix(idx,est_o1) > step_o1*1.58);
-bigidxone2 = find(diff_matrix(idx,est_o2) > step_o2*1.58);
+bigidxone1 = find(diff_matrix(idx,est_o1) > step_o1*1.5);
+bigidxone2 = find(diff_matrix(idx,est_o2) > step_o2*1.5);
 
 % diff_matrix(idx,est_x)
-bigidxtwo1 = find(diff_matrix(idx,est_x1) > step_x1*1.58);
-bigidxtwo2 = find(diff_matrix(idx,est_x2) > step_x2*1.58);
+bigidxtwo1 = find(diff_matrix(idx,est_x1) > step_x1*1.5);
+bigidxtwo2 = find(diff_matrix(idx,est_x2) > step_x2*1.5);
 
 bigidx = sort([est_o1(bigidxone1);est_o2(bigidxone2);est_x1(bigidxtwo1);est_x2(bigidxtwo2)]);
 if ~isempty(bigidx)
@@ -193,8 +193,10 @@ if ~isempty(bigidx)
     
     
     step_times = [step_times(1:change_idx);step_times(change_idx:end)];
-    step_times_scores = [step_times_scores(1:change_idx);step_times_scores(change_idx:end)];
-    [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp(curr_ID_labels, real_impact_times, step_times, step_times_scores,step_o1, step_o2, step_x1, step_x2);
+    disp(size(scores(1:change_idx)))
+    disp(size(scores(change_idx:end)))
+    scores = [scores(1:change_idx);scores(change_idx:end)];
+    [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels, real_impact_times, step_times, scores,step_o1, step_o2, step_x1, step_x2);
 
 else%     % below is old code:
 %     [change_val,~] = max(bigidx);
@@ -209,25 +211,25 @@ else%     % below is old code:
 
     % if all element in a column in diff_matrix is too small, delete, recursive
     % start from second element in both bc first element has diff = 0
-    smallidxone1 = find(diff_matrix(idx,est_o1(2:end)) < step_o1/1.58);
-    smallidxone2 = find(diff_matrix(idx,est_o2(2:end)) < step_o2/1.58);
-    smallidxtwo1 = find(diff_matrix(idx,est_x1(2:end)) < step_x1/1.58);
-    smallidxtwo2 = find(diff_matrix(idx,est_x2(2:end)) < step_x2/1.58);
+    smallidxone1 = find(diff_matrix(idx,est_o1(2:end)) < step_o1/1.55);
+    smallidxone2 = find(diff_matrix(idx,est_o2(2:end)) < step_o2/1.55);
+    smallidxtwo1 = find(diff_matrix(idx,est_x1(2:end)) < step_x1/1.55);
+    smallidxtwo2 = find(diff_matrix(idx,est_x2(2:end)) < step_x2/1.55);
     smallidx = sort([est_o1(smallidxone1+1),est_o2(smallidxone2+1),est_x1(smallidxtwo1+1),est_x2(smallidxtwo2+1)]); % weird that these are rows, bigidx is cols
     if ~isempty(smallidx)
         % delete element at smallidx or smallidx-1 depending on score
-        curr_score = step_times_scores(smallidx(1));
-        prev_score = step_times_scores(smallidx(1)-1);
+        curr_score = scores(smallidx(1));
+        prev_score = scores(smallidx(1)-1);
         if curr_score > prev_score
             step_times = [step_times(1:smallidx(1)-2); step_times(smallidx(1):end)];
-            step_times_scores(smallidx(1)-1) = [];
+            scores(smallidx(1)-1) = [];
 %             scores = [scores(1:smallidx(1)-2);scores(smallidx(1):end)];
         else
             step_times = [step_times(1:smallidx(1)-1); step_times(smallidx(1)+1:end)];
-            step_times_scores(smallidx(1)) = [];
+            scores(smallidx(1)) = [];
 %             scores = [scores(1:smallidx(1)-1);scores(smallidx(1)+1:end)];
         end
-        [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2);
+        [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,scores,step_o1,step_o2,step_x1,step_x2);
     end
 end
 

@@ -18,7 +18,6 @@ MCkeySet = {'Lx1','Ly1','Lz1','Rx1','Ry1','Rz1','Lx2','Ly2','Lz2','Rx2','Ry2','R
 MCvalueSet = [3 4 5 6 7 8 9 10 11 12 13 14]; % order of Mocap left/right based on keyset
 Mmocap = containers.Map(MCkeySet, MCvalueSet);
 
-Fs_mocap = 240;
 [mocapT, mocapL1, mocapR1, mocapL2, mocapR2] = convertMocap2pp(T, Mmocap);
 allmocap = cat(3, mocapL1,mocapR1,mocapL2,mocapR2);
 
@@ -128,7 +127,7 @@ filename = [processedfilepath,intervention];
 save(filename,'pcbTime','datas','pcbData', ...
     'fsrTime','fsrData','impacts','Fs_pcb','Fs_fsr','Fs_acc','Fs_trigger', ...
     'acc_pks','acc_pk_idx','accTime','accData',...
-    'mocapT','allmocap','coordinates','Fs_mocap','sensorN')
+    'mocapT','allmocap','coordinates','sensorN')
 disp(append("Saved as ", filename))
 close all
 %% FOOTFALL DETECTION #############################################################################################
@@ -660,9 +659,6 @@ save(filename,'false_pos','false_neg','true_pos','rmse','big_false_pos','big_fal
 %% perform GMM on these estimated step times for one intervention 5/19/22
 
 estimated_scaled_means = zeros(2,2);
-scaled_means = zeros(2,2);
-real_means = zeros(2,2);
-real_stds = zeros(2,2);
 for p = 1:2 % for each person
     idx = find(floor(clean_final_estimates_labels(:,2)./3) + 1 == p);
     estimated_impact_times = clean_final_estimates_labels(idx,1);
@@ -721,16 +717,20 @@ for p = 1:2 % for each person
         mean1 = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
         mean2 = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
     end
-    scaled_means(p,:) = [min(mean1,mean2),max(mean1,mean2)];
+    scaled_means(i,person_idx) = min(mean1,mean2);
+    scaled_means(i,person_idx+1) = max(mean1,mean2);
 
     % real step times average & std
     mean1 = mean(left_right_diff);
     mean2 = mean(right_left_diff);
-    real_means(p,:) = [min(mean1,mean2),max(mean1,mean2)];
-    real_stds(p,:) = [std(left_right_diff),std(right_left_diff)];
+    real_means(i,person_idx) = min(mean1,mean2);
+    real_means(i,person_idx+1) = max(mean1,mean2);
+    real_std(i,person_idx) = std(left_right_diff);
+    real_std(i,person_idx+1) = std(right_left_diff);
+    end
 end
 
-save(filename,'estimated_scaled_means','scaled_means','real_means','real_stds','-append')
+% save(filename,'estimated_scaled_means','scaled_means','real_means','real_std','-append')
 
 %% perform GMM on these estimated step times (4/26/22)
 % 

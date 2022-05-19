@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 # outputs a csv with predicted locations for every impact
 
 # read csv file
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Praneeth experiment 3_11_22/ProcessedData/both_towards1_localization_person1.csv',header=None)
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular1_localization_p2_withta.csv',header=None)
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -32,11 +32,13 @@ data = data.apply(pd.to_numeric, errors='coerce')
 # convert from pandas dataframe to numpy array
 dataM = pd.DataFrame(data).to_numpy()
 sh = dataM.shape
+print(sh)
 nrows = sh[0]
 ncols = sh[1]
 
-xData = dataM[:,2:26]
-yData = dataM[:,1]
+xData = dataM[:,4:29]
+print(xData.shape)
+yData = dataM[:,2]
 # xData = xData[0,:,:]
 yData = yData.flatten()
 
@@ -45,8 +47,8 @@ yData = yData.flatten()
 # xData = min_max_scaler.transform(xData)
 
 # standardization:
-scaler = StandardScaler().fit(xData)
-xData = scaler.transform(xData)
+# scaler = StandardScaler().fit(xData)
+# xData = scaler.transform(xData)
 
 # GBR, 20 iter
 model_g = GradientBoostingRegressor(n_estimators=50)
@@ -85,7 +87,7 @@ mse_all = mean_squared_error(yTestAll, yPredictAll)
 print("The RMSE on all tests: {:.4f}".format(np.sqrt(mse_all)))
 
 DF = pd.DataFrame(finalPredictions)
-DF.to_csv("both_towards1_person1_results_norecursion.csv") # CHANGE ***********************************
+# DF.to_csv("both_regular1_localization_p1_results.csv") # CHANGE ***********************************
 
 fig = plt.figure(figsize=(6,6))
 plt.plot(yPredictAll,yTestAll,'o')
