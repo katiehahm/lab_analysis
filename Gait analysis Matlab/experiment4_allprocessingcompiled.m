@@ -1,9 +1,9 @@
 %% 4/18/22 experiment 4 all processing, do it section by section
 clear all
 close all
-filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\';
+filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\';
 % ################# change ########################
-intervention = 'both_regular1'; % regular1 limp1 lim2 weight1 weight2 regular2
+intervention = 'both_regular2'; % regular1 limp1 limp2 weight1 weight2 regular2
 % #################################################
 
 % load 3 datasets
@@ -37,7 +37,7 @@ figure; plot(pcbTime, pcbData)
 
 %% cont.
 
-start_time = 9; % change ##
+start_time = 11.2; % change ##
 startidx_pcb = findTindex(start_time,pcbTime);
 startidx_fsr = findTindex(start_time,fsrTime);
 startidx_acc = findTindex(start_time,accTime);
@@ -57,7 +57,7 @@ accTime = accTime(startidx_acc:end);
 accData = accData(startidx_acc:end,:);
 
 
-last_time = 150.2 - start_time; % change ##
+last_time = 95.8 - start_time; % change ##
 lastidx_pcb = findTindex(last_time,pcbTime);
 lastidx_fsr = findTindex(last_time,fsrTime);
 lastidx_acc = findTindex(last_time,accTime);
@@ -80,6 +80,19 @@ accTime(end)
 figure; plot(mocapT, allmocap(:,1,3),'b.')
 figure; plot(pcbTime, pcbData)
 
+%% clean up foot drops error in sensor jenny second half 5/21/22 (limp2)
+% first run next section. Then run "clean up foot drops", then run this
+% section, then run next section again.
+
+% old_fsrData = fsrData;
+% % set any drops under 5 = prev value
+% for i = 1:length(fsrData(:,4))
+%     curr_val = fsrData(i,4);
+%     if curr_val < 6.5
+%         fsrData(i,4) = fsrData(i-1,4);
+%     end
+% end
+
 %%
 % clean and filter pcb data
 % filt_pcbD = lpf_data(pcbData);
@@ -99,14 +112,28 @@ min_thresh = [25, 25, 25, 25]; % L1, R1, L2, R2
 
 impacts = findimpacts_fsr_accel2pp(fsrTime, mocapT, allmocap, fsrData,dist,min_thresh);
 
+%% to clean up foot drops in sensor 5/21/22 
+
+% % set all value after a peak to be flat zero
+% wrong_impacts = find(impacts(:,4) == 4); % foot 4
+% fsrL = length(fsrData(:,4));
+% for i = 1:length(wrong_impacts)
+%     curr_peak_idx = impacts(wrong_impacts(i),2);
+%     fsrData(min(curr_peak_idx + 5,fsrL):min(curr_peak_idx + 140,fsrL),4) = 8.5;
+% end
+% figure; plot(fsrData(:,4))
+% then run above section again
+
+
+
 %% fix small errors in impacts 11/5/21
-heel_start_wrong = [21170,40349]; % these need to be same length
-heel_start_right = [21296,40610];
+heel_start_wrong = [1754,11094,13574,14544,15758]; % these need to be same length
+heel_start_right = [1827,11131,13704,14524,15795];
 
 heel_pk_wrong = []; % index, these need to be same length
 heel_pk_right = [];
 
-delete_pks = []; % index of peaks to delete
+delete_pks = [4208]; % index of peaks to delete
 
 impacts = manual_fix_fsr2pp(impacts,fsrData,heel_start_wrong,heel_start_right,heel_pk_wrong,heel_pk_right,delete_pks);
 impacts = sortrows(impacts,1);
@@ -122,10 +149,10 @@ offset = 0.25;
 [acc_pks,acc_pk_idx] = find_accel_impacts2pp(impacts,fsrTime,window,offset,accTime,accData,fsrData);
 
 %% saving data to matlab
-processedfilepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\';
+processedfilepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\';
 filename = [processedfilepath,intervention];
 
-save(filename,'pcbTime','datas','pcbData', ...
+save(filename,'filename','pcbTime','datas','pcbData', ...
     'fsrTime','fsrData','impacts','Fs_pcb','Fs_fsr','Fs_acc','Fs_trigger', ...
     'acc_pks','acc_pk_idx','accTime','accData',...
     'mocapT','allmocap','coordinates','Fs_mocap','sensorN')
@@ -215,11 +242,13 @@ save(filename,'impactN','impacts','coordinates','acc_pk_idx','acc_pks',...
     'ID_labels','walk_edges','segments','step_o1','step_o2','step_x1','step_x2','-append')
 
 %% sanity check walk edges
-figure; plot(fsrData(:,1))
-hold on
-impact_1_idx = find(impacts(:,4) == 1);
-plot(impacts(impact_1_idx,1),fsrData(impacts(impact_1_idx,1),1),'rx')
 
+for i = 1:4
+    figure; plot(fsrData(:,i))
+    hold on
+    impact_idx = find(impacts(:,4) == i);
+    plot(impacts(impact_idx,1),fsrData(impacts(impact_idx,1),i),'rx')
+end
 %% wiener filter noise 5/17/22
 
 % make sure these noise segments are pure noise
@@ -253,7 +282,7 @@ freq_higher = 350;
 final_estimates = [0,0,0]; % [impact time, segment ID num, likelihood score]
 impact_thresh = 0.04; % (s) of how close an impact should be to the last
 
-arrival_window = 3000; % 5000/Fs_pcb width of window to find arrival time
+arrival_window = 1500; % 5000/Fs_pcb width of window to find arrival time
 impact_time_thresh = 0.05; % if two impacts are 0.05s within each other, combine
 correct_thresh = 0.05; % if predicted is within this thresh to real impact time, it's correct
 
@@ -261,6 +290,9 @@ success_rate = zeros(1,length(segments)-1);
 failure_rate = zeros(1,length(segments)-1);
 wrong_detect_rate = zeros(1,length(segments)-1);
 big_failure_rate = zeros(1,length(segments)-1);
+
+pkprom = [0.0015,0.0015,0.0015,0.0015,0.0015,0.0015];
+pkheight = [0.006,0.016,0.0014,0.004,0.0127,0.009];
 
 for w = 2:length(segments) % for each walking segment
     w
@@ -282,53 +314,109 @@ for w = 2:length(segments) % for each walking segment
         cwt_freq = f(valid_f_idx);
         cwt_mag = abs(wt(valid_f_idx,:));
         sum_cwt = sum(cwt_mag,1);
-        sum_smooth_cwt = movmean(sum_cwt, 800);
-        [pks, locs, ~,~] = findpeaks(sum_smooth_cwt, 'MinPeakProminence',0.0015);
+        sum_smooth_cwt = movmean(sum_cwt, 1000);
+        [pks, locs, ~,~] = findpeaks(sum_smooth_cwt,'MinPeakProminence',pkprom(s));%,'MinPeakHeight',pkheight(s));
         figure;
-        findpeaks(sum_smooth_cwt, 'MinPeakProminence',0.0015)
+        findpeaks(sum_smooth_cwt,'MinPeakProminence',pkprom(s));%,'MinPeakHeight',pkheight(s))
         hold on
         impacttimes = impacts(segments(w-1):segments(w)-1,1)/Fs_fsr;
         plot((impacttimes-start_time)*Fs_pcb,0,'rx','MarkerSize',8)
+        % new code 6/5/22
         for i = 1:length(locs)
             if i == 1
                 starti = max(locs(i) - arrival_window, 1);
             else
-                [minval, minidx] = min(sum_smooth_cwt(locs(i-1):locs(i)));
-                starti = max(locs(i) - arrival_window, locs(i-1)+minidx - arrival_window/5);
+                if locs(i) - arrival_window > locs(i-1) % isolated impact
+                    starti = locs(i) - arrival_window;
+                else % prior impact happens close before
+                    [minval,minidx] = min(sum_smooth_cwt(locs(i-1):locs(i)));
+                    starti = minidx + locs(i-1) - 1;
+                end
             end
-            if i ~= 1 & minval > 0.001
-                arrive_idx = minidx + locs(i-1);
-            else
-                window = sum_smooth_cwt(starti:locs(i));
-                arrive_idx = aic_pick(window, 'to_peak')+starti;
-            end
+            window = sum_smooth_cwt(starti:locs(i));
+            arrive_idx = aic_pick(window, 'to_peak')+starti - 1;
             add_array = [arrive_idx, s];
             estimated_impacts = [estimated_impacts; add_array];
             plot(arrive_idx,0,'bx') 
         end
-        
+        % old code, used until end of April 3 
+%         for i = 1:length(locs)
+%             if i == 1
+%                 starti = max(locs(i) - arrival_window, 1);
+%             else
+%                 [minval, minidx] = min(sum_smooth_cwt(locs(i-1):locs(i)));
+%                 starti = max(locs(i) - arrival_window, locs(i-1)+minidx - arrival_window/5);
+%             end
+%             if i ~= 1 & minval > 0.001
+%                 arrive_idx = minidx + locs(i-1);
+%             else
+%                 window = sum_smooth_cwt(starti:locs(i));
+%                 arrive_idx = aic_pick(window, 'to_peak')+starti;
+%             end
+%             add_array = [arrive_idx, s];
+%             estimated_impacts = [estimated_impacts; add_array];
+%             plot(arrive_idx,0,'bx') 
+%         end
     end
-    
     estimated_impacts(1,:) = []; % from initialization
-    sensor1_impact_idx = find(estimated_impacts(:,2) == 1);
-    % automatically add sensor1 impacts
-    current_impacts = estimated_impacts(sensor1_impact_idx,1);
-    scores = ones(1,length(current_impacts));
-    for s = 2:sensorN
-        sensor_impact_idx = find(estimated_impacts(:,2) == s);
-        for i = 1:length(sensor_impact_idx)
-            current_val = estimated_impacts(sensor_impact_idx(i),1);
-            current_difference = abs(current_impacts - current_val)/Fs_pcb;
-            near_value_idx = find(current_difference < impact_time_thresh);
-            % if current value is far enough away from recorded values
-            if isempty(near_value_idx)
-                current_impacts(end+1) = current_val;
-                scores(end+1) = 1;
-            else % repeat of an already recorded value
-                scores(near_value_idx(1)) = scores(near_value_idx(1)) + 1;
-            end
+    
+    % combine estimated impacts so there's no repeat
+    % new code: takes average of similar groups of impacts instead 6/5/22
+    estimates = sort(estimated_impacts(:,1));
+    current_impacts = [];
+    scores = [];
+    groupC = zeros(1,length(estimates));
+    currval = estimates(1);
+    groupC(1) = 1;
+    thresh = 0.05*Fs_pcb;
+    currCount = 1;
+    for i = 2:length(estimates)
+        if estimates(i) < currval + thresh
+            groupC(i) = currCount;
+        else
+            currval = estimates(i);
+            currCount = currCount + 1;
+            groupC(i) = currCount;
         end
     end
+    allcounts = unique(groupC);
+    for i = 1:length(allcounts)
+        groupidx = find(groupC == allcounts(i));
+        current_impacts(end+1) = mean(estimates(groupidx));
+        scores(end+1) = length(groupidx);
+    end
+
+    delete_pred = [];
+    for i = 2:length(current_impacts)
+        if current_impacts(i) - current_impacts(i-1) < thresh
+            current_impacts(i) = mean(current_impacts(i-1:i));
+            delete_pred(end+1) = i-1;
+            scores(i) = scores(i) + scores(i-1);
+        end
+    end
+    current_impacts(delete_pred) = [];
+    scores(delete_pred) = [];
+    
+    % old code: takes sensor 1 for granted
+%     sensor1_impact_idx = find(estimated_impacts(:,2) == 1);
+%     % automatically add sensor1 impacts
+%     current_impacts = estimated_impacts(sensor1_impact_idx,1);
+%     scores = ones(1,length(current_impacts));
+%     for s = 2:sensorN
+%         sensor_impact_idx = find(estimated_impacts(:,2) == s);
+%         for i = 1:length(sensor_impact_idx)
+%             current_val = estimated_impacts(sensor_impact_idx(i),1);
+%             current_difference = abs(current_impacts - current_val)/Fs_pcb;
+%             near_value_idx = find(current_difference < impact_time_thresh);
+%             % if current value is far enough away from recorded values
+%             if isempty(near_value_idx)
+%                 current_impacts(end+1) = current_val;
+%                 scores(end+1) = 1;
+%             else % repeat of an already recorded value
+%                 scores(near_value_idx(1)) = scores(near_value_idx(1)) + 1;
+%             end
+%         end
+%     end
     current_impacts = current_impacts + start_idx_pcb;
     elim = find(current_impacts < (impacttimes(1)-0.25)*Fs_pcb);
     current_impacts(elim) = [];
@@ -394,9 +482,11 @@ save(filename,'wien_pcbD','final_estimates','success_rate','failure_rate','wrong
 
 close all
 final_estimates_labels = [0,0,0];
-% for s = 2:length(segments)
+plotbool = true;
 for s = 2:length(segments)
-% for s = 5:5
+% for s = 9:length(segments)
+% for s = 9:9
+    s
     start_index = segments(s-1);
     stop_index = segments(s)-1;
 
@@ -405,65 +495,166 @@ for s = 2:length(segments)
     step_times_scores = final_estimates(step_times_idx,3);
     seg_matrix = [orig_step_times,step_times_scores];
     sort_seg_matrix = sortrows(seg_matrix,1);
-    orig_step_times = sort_seg_matrix(:,1);
+    step_times = sort_seg_matrix(:,1);
     step_times_scores = sort_seg_matrix(:,2);
     
-    real_labels = ID_labels(start_index:stop_index);
+    curr_ID_labels = ID_labels(start_index:stop_index);
     real_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
     
-%     shorten the search by cutting segments in half
-    half_idx = floor(length(real_impact_times)/2);
-    if (real_impact_times(half_idx+1) - real_impact_times(half_idx)) < 0.1
-        half_idx = half_idx + 1;
+    if length(step_times) > 22 % uniqueperms can only handle 22 length
+        diff = length(step_times) - 22;
+        cut_start = floor(diff/2);
+        cut_end = ceil(diff/2);
+        step_times = step_times(cut_start+1:length(orig_step_times)-cut_end);
+        step_times_scores = step_times_scores(cut_start+1:length(step_times_scores)-cut_end);
     end
-    half_time = real_impact_times(half_idx);
     
-    % first half
-    real_idx = find(real_impact_times <= half_time);
-    step_times_idx = find(orig_step_times <= (half_time+0.1)); % includes a buffer for time cutoff
-    [estimateID_LR1, step_times1, scores1] = recursive_stepID_limp(real_labels(real_idx), real_impact_times(real_idx), orig_step_times(step_times_idx),step_times_scores(step_times_idx),step_o1,step_o2,step_x1,step_x2);
-    
-    title(sprintf('Final estimated ID labels %d segment'),s)
-    
-    % second half
-    real_idx = find(real_impact_times > half_time);
-    step_times_idx = find(orig_step_times > (half_time-0.1)); % includes a buffer for time cutoff
-    [estimateID_LR2, step_times2, scores2] = recursive_stepID_limp(real_labels(real_idx), real_impact_times(real_idx), orig_step_times(step_times_idx),step_times_scores(step_times_idx),step_o1,step_o2,step_x1,step_x2);
-    
-    title(sprintf('Final estimated ID labels %d segment'),s)
-    
-    % eliminate overlap between the two halves
-    delete_idx2 = [];
-    for i = 1:length(step_times2)
-        curr_step_time = step_times2(i);
-        same_idx = find(step_times1 == curr_step_time);
-        if ~isempty(same_idx)
-            for j = 1:length(same_idx)
-                curr_id = estimateID_LR2(i);
-                same_id = estimateID_LR1(same_idx(j));
-                if curr_id == 1 | curr_id == 2
-                    if same_id == 1 | same_id == 2
-                        % overlapping impact
-                        delete_idx2(end+1) = i;
-                    end
-                else
-                    if same_id == 3 | same_id == 4
-                        % overlapping impact
-                        delete_idx2(end+1) = i;
-                    end
-                end
+    % trying to take out the recursion in the function
+    [diff_array, label_array, estimateID] = notrecursive_stepID_limp_whole(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2,plotbool);
+    est_o1 = find(label_array == 1);
+    est_o2 = find(label_array == 2);
+    est_x1 = find(label_array == 3);
+    est_x2 = find(label_array == 4);
+
+    bigidxone1 = find(diff_array(est_o1) > step_o1*1.58);
+    bigidxone2 = find(diff_array(est_o2) > step_o2*1.58);
+    bigidxtwo1 = find(diff_array(est_x1) > step_x1*1.58);
+    bigidxtwo2 = find(diff_array(est_x2) > step_x2*1.58);
+    bigidx = sort([est_o1(bigidxone1);est_o2(bigidxone2);est_x1(bigidxtwo1);est_x2(bigidxtwo2)]);
+    smallidxone1 = find(diff_array(est_o1(2:end)) < step_o1/1.58);
+    smallidxone2 = find(diff_array(est_o2(2:end)) < step_o2/1.58);
+    smallidxtwo1 = find(diff_array(est_x1(2:end)) < step_x1/1.58);
+    smallidxtwo2 = find(diff_array(est_x2(2:end)) < step_x2/1.58);
+    smallidx = sort([est_o1(smallidxone1+1),est_o2(smallidxone2+1),est_x1(smallidxtwo1+1),est_x2(smallidxtwo2+1)]);
+    whilecount = 0;
+    while ~isempty(bigidx) | ~isempty(smallidx)
+        whilecount = whilecount + 1
+        if ~isempty(bigidx)
+            [bad_idx,~] = max(bigidx);
+            bad_idx % uncomment to debug
+            curr_idx = bigidx(1);
+
+            if label_array(curr_idx) == 1
+                [~,change_idx] = min(abs(step_times(curr_idx)-step_times(1:curr_idx-1) - step_o1));
+            elseif label_array(curr_idx) == 2
+                [~,change_idx] = min(abs(step_times(curr_idx)-step_times(1:curr_idx-1) - step_o2));
+            elseif label_array(curr_idx) == 3
+                [~,change_idx] = min(abs(step_times(curr_idx)-step_times(1:curr_idx-1) - step_x1));
+            else
+                [~,change_idx] = min(abs(step_times(curr_idx)-step_times(1:curr_idx-1) - step_x2));
             end
+            change_idx
+            step_times = [step_times(1:change_idx);step_times(change_idx:end)];
+            step_times_scores = [step_times_scores(1:change_idx);step_times_scores(change_idx:end)];
+            [diff_array, label_array, estimateID] = notrecursive_stepID_limp_whole(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2,plotbool);
+        else
+            % delete element at smallidx or smallidx-1 depending on score
+            curr_score = step_times_scores(smallidx(1));
+            prev_score = step_times_scores(smallidx(1)-1);
+            if curr_score > prev_score
+                step_times = [step_times(1:smallidx(1)-2); step_times(smallidx(1):end)];
+                step_times_scores(smallidx(1)-1) = [];
+                smallidx(1)-1
+    %             scores = [scores(1:smallidx(1)-2);scores(smallidx(1):end)];
+            else
+                step_times = [step_times(1:smallidx(1)-1); step_times(smallidx(1)+1:end)];
+                step_times_scores(smallidx(1)) = [];
+                smallidx(1)
+    %             scores = [scores(1:smallidx(1)-1);scores(smallidx(1)+1:end)];
+            end
+            [diff_array, label_array, estimateID] = notrecursive_stepID_limp_whole(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2,plotbool);
         end
+        est_o1 = find(label_array == 1);
+        est_o2 = find(label_array == 2);
+        est_x1 = find(label_array == 3);
+        est_x2 = find(label_array == 4);
+
+        bigidxone1 = find(diff_array(est_o1) > step_o1*1.58);
+        bigidxone2 = find(diff_array(est_o2) > step_o2*1.58);
+        bigidxtwo1 = find(diff_array(est_x1) > step_x1*1.58);
+        bigidxtwo2 = find(diff_array(est_x2) > step_x2*1.58);
+        bigidx = sort([est_o1(bigidxone1);est_o2(bigidxone2);est_x1(bigidxtwo1);est_x2(bigidxtwo2)]);
+        smallidxone1 = find(diff_array(est_o1(2:end)) < step_o1/1.58);
+        smallidxone2 = find(diff_array(est_o2(2:end)) < step_o2/1.58);
+        smallidxtwo1 = find(diff_array(est_x1(2:end)) < step_x1/1.58);
+        smallidxtwo2 = find(diff_array(est_x2(2:end)) < step_x2/1.58);
+        smallidx = sort([est_o1(smallidxone1+1),est_o2(smallidxone2+1),est_x1(smallidxtwo1+1),est_x2(smallidxtwo2+1)]);
     end
-    step_times2(delete_idx2) = [];
-    estimateID_LR2(delete_idx2) = [];
-    scores2(delete_idx2)= [];
     
-    % combine the two halves, add last edits
-    [estimateID, step_times] = recursive_stepID_noperms_limp(real_labels,real_impact_times,[estimateID_LR1,estimateID_LR2],[step_times1;step_times2],[scores1;scores2],step_o1,step_o2,step_x1,step_x2);
     
+    
+    % tried with recursive_stepID_limp_whole.m, didn't work
+%     if length(orig_step_times) > 20 % uniqueperms can only handle 22 length
+%         diff = length(orig_step_times) - 20;
+%         cut_start = floor(diff/2);
+%         cut_end = ceil(diff/2);
+%         orig_step_times = orig_step_times(cut_start+1:length(orig_step_times)-cut_end);
+%         step_times_scores = step_times_scores(cut_start+1:length(step_times_scores)-cut_end);
+%     end
+%     
+%     real_labels = ID_labels(start_index:stop_index);
+%     real_impact_times = impacts(start_index:stop_index,1)./Fs_fsr;
+%     
+%     [estimateID_LR, step_times, scores] = recursive_stepID_limp_whole(real_labels, real_impact_times, orig_step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2);
+    
+    
+    
+    
+    
+%     
+% %     shorten the search by cutting segments in half
+%     half_idx = floor(length(real_impact_times)/2);
+%     if (real_impact_times(half_idx+1) - real_impact_times(half_idx)) < 0.1
+%         half_idx = half_idx + 1;
+%     end
+%     half_time = real_impact_times(half_idx);
+%     
+%     % first half
+%     real_idx = find(real_impact_times <= half_time);
+%     step_times_idx = find(orig_step_times <= (half_time)); 
+%     [estimateID_LR1, step_times1, scores1] = recursive_stepID_limp(real_labels(real_idx), real_impact_times(real_idx), orig_step_times(step_times_idx),step_times_scores(step_times_idx),step_o1,step_o2,step_x1,step_x2);
+%     
+%     title(sprintf('Final estimated ID labels %d segment'),s)
+%     
+%     % second half
+%     real_idx = find(real_impact_times > half_time);
+%     step_times_idx = find(orig_step_times > (half_time)); 
+%     [estimateID_LR2, step_times2, scores2] = recursive_stepID_limp(real_labels(real_idx), real_impact_times(real_idx), orig_step_times(step_times_idx),step_times_scores(step_times_idx),step_o1,step_o2,step_x1,step_x2);
+%     
+%     title(sprintf('Final estimated ID labels %d segment'),s)
+%     
+%     % eliminate overlap between the two halves
+%     delete_idx2 = [];
+%     for i = 1:length(step_times2)
+%         curr_step_time = step_times2(i);
+%         same_idx = find(step_times1 == curr_step_time);
+%         if ~isempty(same_idx)
+%             for j = 1:length(same_idx)
+%                 curr_id = estimateID_LR2(i);
+%                 same_id = estimateID_LR1(same_idx(j));
+%                 if curr_id == 1 | curr_id == 2
+%                     if same_id == 1 | same_id == 2
+%                         % overlapping impact
+%                         delete_idx2(end+1) = i;
+%                     end
+%                 else
+%                     if same_id == 3 | same_id == 4
+%                         % overlapping impact
+%                         delete_idx2(end+1) = i;
+%                     end
+%                 end
+%             end
+%         end
+%     end
+%     step_times2(delete_idx2) = [];
+%     estimateID_LR2(delete_idx2) = [];
+%     scores2(delete_idx2)= [];
+%     
+%     % combine the two halves, add last edits
+%     [estimateID, step_times] = recursive_stepID_noperms_limp(real_labels,real_impact_times,[estimateID_LR1,estimateID_LR2],[step_times1;step_times2],[scores1;scores2],step_o1,step_o2,step_x1,step_x2);
+%     
     for i = 1:length(step_times)
-        add_array = [step_times(i),estimateID(i),s];
+        add_array = [step_times(i),label_array(i),s];
         final_estimates_labels = [final_estimates_labels; add_array];
     end
     
@@ -485,30 +676,62 @@ est_x = find(final_estimates_labels(:,2) == 3 | final_estimates_labels(:,2) == 4
 plot(final_estimates_labels(est_o,1),0.5,'ro')
 plot(final_estimates_labels(est_x,1),0.5,'rx')
 
-% save(filename,'final_estimates_labels','-append')
+save(filename,'final_estimates_labels','-append')
 
-%% manually remove beg/end of segments that are extra impacts (4/25/22)
-% clean_... means start/end of segments that don't match have been removed
-
-% go off of the large figure from above
-remove_est = [1.6332,8.49359,8.59625,14.007,17.073,34.4034,52.0262,63.943,74.3401,74.5817,84.0328,94.4409,91.1781,103.964,129.401]; % seconds
-remove_real = [43.1595,52.1404,74.3715,80.0921,80.6625,94.4426,95.1041,103.987]; % seconds
-
-clean_final_estimates_labels = final_estimates_labels;
-remove_est_idx = [];
-for i = 1:length(remove_est)
-    [~,change_idx] = min(abs(final_estimates_labels(:,1) - remove_est(i)));
-    remove_est_idx(end+1) = change_idx;
-end
-clean_final_estimates_labels(remove_est_idx,:) = [];
+%% remove start/end of real segments to match final estimates 5/21/22
 
 clean_impacts = impacts;
 clean_ID_labels = ID_labels;
-remove_real_idx = [];
-for i = 1:length(remove_real)
-    [~,change_idx] = min(abs(impacts(:,1)./Fs_fsr - remove_real(i)));
-    remove_real_idx(end+1) = change_idx;
+seg_val = unique(final_estimates_labels(:,3));
+walk_edges_starts = find(walk_edges == -1);
+walk_edges_ends = find(walk_edges == 1);
+delete_idx = [];
+for i = 1:length(seg_val)
+    seg_idx = find(final_estimates_labels(:,3) == seg_val(i));
+    first_val = final_estimates_labels(seg_idx(1),1);
+    last_val = final_estimates_labels(seg_idx(end),1);
+    
+    impact_inseg = impacts(walk_edges_starts(seg_val(i)-1):walk_edges_ends(seg_val(i)-1),1)./Fs_fsr;
+    curr_delete_idx = find(impact_inseg < (first_val - 0.15) | impact_inseg > (last_val + 0.15));
+    delete_idx = [delete_idx;curr_delete_idx + walk_edges_starts(seg_val(i)-1) - 1];
 end
+
+clean_impacts(delete_idx,:) = [];
+clean_ID_labels(delete_idx) = [];
+
+figure;
+real_o = find(clean_ID_labels == 1);
+real_x = find(clean_ID_labels == 2);
+plot(clean_impacts(real_o,1)./Fs_fsr,0,'bo')
+hold on
+plot(clean_impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-1 1])
+
+est_o = find(final_estimates_labels(:,2) == 1 | final_estimates_labels(:,2) == 2);
+est_x = find(final_estimates_labels(:,2) == 3 | final_estimates_labels(:,2) == 4);
+
+plot(final_estimates_labels(est_o,1),0.5,'ro')
+plot(final_estimates_labels(est_x,1),0.5,'rx')
+
+figure; plot(clean_impacts(real_o,1)./Fs_fsr,real_o,'bo')
+hold on
+plot(clean_impacts(real_x,1)./Fs_fsr,real_x,'bx')
+
+figure; plot(final_estimates_labels(est_o,1),est_o,'ro')
+hold on
+plot(final_estimates_labels(est_x,1),est_x,'rx')
+
+%% manually remove beg/end of segments that are extra impacts (4/25/22) 
+% clean_... means start/end of segments that don't match have been removed
+
+% same as above but with index
+remove_est_idx = [109,110,111,129,192]; % seconds
+remove_real_idx = [18,40,42,44,101,121,122,123,125,127,145,209]; % seconds
+
+clean_final_estimates_labels = final_estimates_labels;
+clean_final_estimates_labels(remove_est_idx,:) = [];
+
+
 clean_impacts(remove_real_idx,:) = [];
 clean_ID_labels(remove_real_idx) = [];
 
@@ -528,6 +751,93 @@ plot(clean_final_estimates_labels(est_o,1),0.5,'ro')
 plot(clean_final_estimates_labels(est_x,1),0.5,'rx')
 
 save(filename,'clean_final_estimates_labels','clean_impacts','clean_ID_labels','-append')
+
+
+%% add overlapping impacts when alg didn't pick up bc start/end of segment 5/21/22
+
+add_impacts_beg = [1.8497,23.5991,62.9905,70.6383]; % (s); at beg of episode; these need to be in proper order - later ones first
+add_impacts_end = [3.83492,4.31742,11.9941,27.7414,43.3963,67.1973,74.7644,83.103]; % (s); at end of episode
+
+for i = 1:length(add_impacts_beg)
+    [~,idx] = min(abs(clean_final_estimates_labels(:,1) - add_impacts_beg(i)));
+    curr_label = clean_final_estimates_labels(idx,2);
+    new_label = 0;
+    if curr_label == 1 | curr_label == 2
+        next_idx = idx+1;
+        next_label = clean_final_estimates_labels(next_idx,2);
+        while(next_label ~= 3 & next_label ~=4)
+            next_idx = next_idx+1;
+            next_label = clean_final_estimates_labels(next_idx,2);
+        end
+        if next_label == 3
+            new_label = 4;
+        else
+            new_label = 3;
+        end
+    else
+        next_idx = idx+1;
+        next_label = clean_final_estimates_labels(next_idx,2);
+        while(next_label ~= 1 & next_label ~=2)
+            next_idx = next_idx+1;
+            next_label = clean_final_estimates_labels(next_idx,2);
+        end
+        if next_label == 1
+            new_label = 2;
+        else
+            new_label = 1;
+        end
+    end
+    insert_arr = [clean_final_estimates_labels(idx,1),new_label,clean_final_estimates_labels(idx,3)];
+    clean_final_estimates_labels = [clean_final_estimates_labels(1:idx,:);insert_arr;clean_final_estimates_labels(idx+1:end,:)];
+end
+
+for i = 1:length(add_impacts_end)
+    [~,idx] = min(abs(clean_final_estimates_labels(:,1) - add_impacts_end(i)));
+    curr_label = clean_final_estimates_labels(idx,2);
+    new_label = 0;
+    prev_idx = idx-1;
+    prev_label = clean_final_estimates_labels(prev_idx,2);
+    if curr_label == 1 | curr_label == 2
+        while(prev_label ~= 3 & prev_label ~=4)
+            prev_idx = prev_idx-1;
+            prev_label = clean_final_estimates_labels(prev_idx,2);
+        end
+        if prev_label == 3
+            new_label = 4;
+        else
+            new_label = 3;
+        end
+    else
+        while(prev_label ~= 1 & prev_label ~=2)
+            prev_idx = prev_idx-1;
+            prev_label = clean_final_estimates_labels(prev_idx,2);
+        end
+        if prev_label == 1
+            new_label = 2;
+        else
+            new_label = 1;
+        end
+    end
+    insert_arr = [clean_final_estimates_labels(idx,1),new_label,clean_final_estimates_labels(idx,3)];
+    clean_final_estimates_labels = [clean_final_estimates_labels(1:idx,:);insert_arr;clean_final_estimates_labels(idx+1:end,:)];
+end
+
+figure;
+real_o = find(clean_ID_labels == 1);
+real_x = find(clean_ID_labels == 2);
+plot(clean_impacts(real_o,1)./Fs_fsr,0,'bo')
+hold on
+plot(clean_impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-1 1])
+
+est_o = find(clean_final_estimates_labels(:,2) == 1 | clean_final_estimates_labels(:,2) == 2);
+est_x = find(clean_final_estimates_labels(:,2) == 3 | clean_final_estimates_labels(:,2) == 4);
+
+plot(clean_final_estimates_labels(est_o,1),0.5,'ro')
+plot(clean_final_estimates_labels(est_x,1),0.5,'rx')
+
+save(filename,'clean_final_estimates_labels','-append')
+
 %% evaluate clean_final_estimates_labels (4/22/22)
 
 segmentN = length(segments)-1;
@@ -605,6 +915,8 @@ for s = 2:length(segments)
         if ~isempty(diff_idx) % if a estimated impact exists close to the real impact time
             est_idx = find(estimate_labels(diff_idx)==curr_label);
             if ~isempty(est_idx) % if the close impact is labeled correctly
+                [~,thisidx] = min(diff(est_idx));
+                est_idx = est_idx(thisidx);
                 big_curr_true_pos = big_curr_true_pos + 1;
                 est_times = estimate_times(diff_idx);
                 est_time = est_times(est_idx);
@@ -655,7 +967,28 @@ for s = 2:length(segments)
     big_rmse(s-1) = sqrt(big_curr_rmse/big_curr_true_pos);
 end
 
+true_pos
 save(filename,'false_pos','false_neg','true_pos','rmse','big_false_pos','big_false_neg','big_true_pos','big_rmse','-append')
+
+%% delete segment 1 5/25/22
+
+i = 4; % this is +1 from count of segment
+est_idx = find(clean_final_estimates_labels(:,3) == i);
+clean_final_estimates_labels(est_idx,:) = [];
+start_idx = find(clean_final_estimates_labels(:,3) == i+1);
+start_idx = start_idx(1);
+last_idx = find(clean_final_estimates_labels(:,3) == i-1);
+if isempty(last_idx)
+    real_idx = find(clean_impacts(:,1)./Fs_fsr < clean_final_estimates_labels(start_idx,1) - 0.15 & clean_impacts(:,1)./Fs_fsr > 0);
+else
+    last_idx = last_idx(end);
+    real_idx = find(clean_impacts(:,1)./Fs_fsr < clean_final_estimates_labels(start_idx,1) - 0.15 & clean_impacts(:,1)./Fs_fsr > clean_final_estimates_labels(last_idx,1) + 0.15);
+end
+clean_impacts(real_idx,:) = [];
+clean_ID_labels(real_idx) = [];
+
+save(filename,'clean_final_estimates_labels','clean_impacts','clean_ID_labels','-append')
+% run above section again to evaluate
 
 %% perform GMM on these estimated step times for one intervention 5/19/22
 
@@ -730,6 +1063,9 @@ for p = 1:2 % for each person
     real_stds(p,:) = [std(left_right_diff),std(right_left_diff)];
 end
 
+estimated_scaled_means
+scaled_means
+real_means
 save(filename,'estimated_scaled_means','scaled_means','real_means','real_stds','-append')
 
 %% perform GMM on these estimated step times (4/26/22)

@@ -1,5 +1,5 @@
 % no need to edit csv file it handles headers
-filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Uriel 2\fsr_both_weight2';
+filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Alex 4\fsr_both_regular2';
 T = readtable(filepath, 'PreserveVariableNames',true);
 A = table2array(T);
 

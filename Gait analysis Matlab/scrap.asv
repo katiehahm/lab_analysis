@@ -181,9 +181,11 @@ for i = 1:comb_len
     curr_x = find(allcombinations(i,:) == 2);
     locs_o = person1_loc(curr_o);
     locs_x = person2_loc(curr_x);
-    scores(i) = sum(abs(diff(diff(locs_o)))) + sum(abs(diff(diff(locs_x))));
+    scores(i) = sum(abs(diff(diff(locs_o))) + sum(abs(diff(diff(locs_x)));
 end
 
+[~,minidx] = min(scores)
+scores(minidx) = max(scores);
 [~,minidx] = min(scores)
 final_comb = allcombinations(minidx,:);
 figure;

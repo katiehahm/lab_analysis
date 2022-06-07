@@ -179,6 +179,14 @@ dfs_IDsequence.m (4/20/22)
 	outputs a small list of possible step time combinations
 	hopefully faster than doing uniqueperms
 
+notrecursive_stepID_limp_whole.m (5/19/22)
+	cuts est step time segments so that they are max 22 in length
+	processes it using uniqueperms
+	parent code (experiment4_allprocessingcompiled.m) uses while loop
+	to replace the recursive nature. This runs faster.
+
+https://www.mathworks.com/matlabcentral/fileexchange/24462-wiener-filter-for-noise-reduction-and-speech-enhancement
+
 
 Data
 ===============================================

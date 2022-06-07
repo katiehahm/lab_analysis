@@ -217,3 +217,102 @@ set(gca, 'FontName', 'Times New Roman')
 set(gca, 'FontSize', 16)
 legend('Estimated person 1')
 plot([NaN NaN], [NaN NaN], 'o','Color', "red", 'DisplayName', "Estimated person 2")
+
+%% GMM results one example subject
+
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+GMMresults = zeros(1,4);
+for t = 1:length(takes)
+    filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Uriel 2\ProcessedData\both_', char(takes(t))];
+    load(filename)
+    
+    gmmarray = [real_means(1,1),estimated_scaled_means(1,1),real_means(1,2),estimated_scaled_means(1,2)];
+    GMMresults(end+1,:) = gmmarray;
+end
+
+GMMresults(1,:) = []; % initialization
+X = categorical({'Regular 1','Limp 1','Limp 2','Weight 1','Weight 2','Regular 2'});
+X = reordercats(X,{'Regular 1','Limp 1','Limp 2','Weight 1','Weight 2','Regular 2'});
+
+figure;
+bar(X,GMMresults)
+legend('Real mean 1','Estimated mean 1','Real mean 2','Estimated mean 2')
+ylabel('Step time (s)')
+title('Estimated and measured means of each leg for one subject')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 14)
+
+%% GMM results all subjects
+
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+subj = {'Jenny 1','Uriel 2'};
+
+GMM = zeros(1,2); % [est, real]
+
+for s = 1:length(subj)
+    for t = 1:length(takes)
+        filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',char(subj(s)),'\ProcessedData\both_', char(takes(t))];
+        load(filename)
+        
+        GMM(end+1,:) = [estimated_scaled_means(1,1),real_means(1,1)];
+        GMM(end+1,:) = [estimated_scaled_means(1,2),real_means(1,2)];
+        GMM(end+1,:) = [estimated_scaled_means(2,1),real_means(2,1)];
+        GMM(end+1,:) = [estimated_scaled_means(2,2),real_means(2,2)];
+    end
+end
+
+figure; 
+plot(GMM(:,1),GMM(:,2),'b.')
+xlabel('Estimated step time (s)')
+ylabel('Measured step time (s)')
+title('Estimated and measured means across all subjects')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 14)
+xlim([0.35 0.9])
+ylim([0.35 0.9])
+
+sqrt(mean((GMM(:,1) - GMM(:,2)).^2))
+
+
+%% variation in TA data 
+
+Take = [];
+Foot = [];
+TA = [];
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+for t = 1:length(takes)
+    filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_', char(takes(t))];
+    load(filename)
+    foot1 = find(impacts(:,4) == 3);
+    foot2 = find(impacts(:,4) == 4);
+    Take = [Take, ones(1,length(foot1) + length(foot2)).*t];
+    Foot = [Foot, zeros(1,length(foot1)), ones(1,length(foot2))];
+    TA = [TA, acc_pks(foot1,2).', acc_pks(foot2,2).'];
+end
+
+tbl = table(Foot, Take, TA);
+
+figure;
+boxchart(tbl.Take,tbl.TA,'GroupByColor',tbl.Foot,'JitterOutliers','off')
+ylabel('Acceleration (g)')
+legend('Right Foot','Left Root')
+xticks([1,2,3,4,5,6]);
+xticklabels({'regular1','brace1','brace2','weight1','weight2','regular2'})
+title('Observed TA of each foot for one subject')
+set(findobj(gcf,'type','axes'),'FontName','Times New Roman','FontSize',14)
+
+
+%% localization results matlab fig
+
+filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Uriel 2\ProcessedData\ExcelData\alltakes_localization_p2_results.csv'];
+T = readtable(filename);
+A = table2array(T);
+estlocs = A(:,2);
+reallocs = A(:,1);
+figure;
+plot(estlocs, reallocs,'b.')
+xlabel('Estimated locations (m)')
+ylabel('Measured locations (m)')
+title('Localization performance for one example subject')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 14)

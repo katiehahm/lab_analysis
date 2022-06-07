@@ -299,7 +299,8 @@ end
 
 writematrix(M,'TAplot.csv')
 
-%% uncomment later
+%% variation in TA data chart 
+
 tbl = readtable('TAplot.csv');
 takeOrder = {'1','2','3','4','5','6'};
 % tbl.Take = categorical(tbl.Take,takeOrder);

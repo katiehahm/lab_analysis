@@ -1,21 +1,35 @@
-function [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2)
+function [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp_whole(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2)
+% make sure step_times is 22 long max
 % recursively adds and takes out step times to match best step time outcome
 % used by experiment4_footfalldetection.m &
 % experiment4_allprocessingcompiled.m
 % incorporates having two step times per person in case of limp
-% 4/26/22
+% 5/19/22
 
 powerN = length(step_times); % unsemicolon to debug ################
 
-allcombinations = ones(1, powerN); % no x's
-label_allcombinations = ones(1,powerN); % same as allcombinations but left vs right on each person labeled
+% allcombinations = ones(1, powerN); % no x's
+% label_allcombinations = ones(1,powerN); % same as allcombinations but left vs right on each person labeled
 % 1 = x1, 2 = x2, 3 = o1, 4 = o2
 
-for i = round(powerN/3):round(2*powerN/3) % know they at least have to be 33% of total footsteps
+% calculate how big initialization should be
+low_powerN = round(powerN/3); % know they at least have to be 33% of total footsteps
+high_powerN = round(2*powerN/3);
+comb_len = 0;
+for i = low_powerN:high_powerN
+    comb_len = comb_len + nchoosek(powerN,i);
+end
+allcombinations = ones(comb_len, powerN);
+label_allcombinations = ones(comb_len, powerN);
+% get all unique perms
+assign_idx = 1;
+for i = low_powerN:high_powerN 
     curr_arr = ones(1,powerN);
     curr_arr(1:i) = 2;
     P = uniqueperms(curr_arr);
-    allcombinations = [allcombinations; P];
+    Prows = size(P,1);
+    allcombinations(assign_idx:assign_idx+Prows-1,:) = P;
+    assign_idx = assign_idx + Prows;
 end
 
 % below uses the implemented dfs algorithm
@@ -27,7 +41,7 @@ end
 % allcombinations = [allcombinations; P2];
 % size(allcombinations)
 
-allcombinations(1,:) = []; % delete first row from initialization
+% allcombinations(1,:) = []; % delete first row from initialization
 [allcombN,~] = size(allcombinations);
 scores = zeros(allcombN,1);
 diff_matrix = zeros(allcombN, powerN);
@@ -133,7 +147,8 @@ end
 [~,idx] = min(scores);
 estimateID = allcombinations(idx,:);
 % if first four impacts are all from the same person
-while isempty(find(estimateID(1:4) == 1)) | isempty(find(estimateID(1:4) == 2))
+while ~any(estimateID(1:4) == 1 | estimateID(1:4) == 2)
+% while isempty(find(estimateID(1:4) == 1)) || isempty(find(estimateID(1:4) == 2))
     scores(idx) = max(scores); % ignore this combination
     [~,idx] = min(scores);
     estimateID = allcombinations(idx,:);
@@ -143,19 +158,33 @@ estimateID_LR = label_allcombinations(idx,:);
 
 % display current state of step times
 figure;
-real_o = find(curr_ID_labels == 1);
-real_x = find(curr_ID_labels == 2);
-plot(real_impact_times(real_o),0,'bo')
+% real_o = find(curr_ID_labels == 1);
+% real_x = find(curr_ID_labels == 2);
+plot(real_impact_times(curr_ID_labels == 1),0,'bo')
 hold on
-plot(real_impact_times(real_x),0,'bx')
+plot(real_impact_times(curr_ID_labels == 2),0,'bx')
 ylim([-1 1])
 
-est_o = find(allcombinations(idx,:) == 1);
-est_x = find(allcombinations(idx,:) == 2);
+% est_o = find(allcombinations(idx,:) == 1);
+% est_x = find(allcombinations(idx,:) == 2);
 
-plot(step_times(est_o),0.5,'ro')
-plot(step_times(est_x),0.5,'rx')
+plot(step_times(allcombinations(idx,:) == 1),0.5,'ro')
+plot(step_times(allcombinations(idx,:) == 2),0.5,'rx')
 set(gcf,'Position',[100 100 500 200])
+% figure;
+% real_o = find(curr_ID_labels == 1);
+% real_x = find(curr_ID_labels == 2);
+% plot(real_impact_times(real_o),0,'bo')
+% hold on
+% plot(real_impact_times(real_x),0,'bx')
+% ylim([-1 1])
+% 
+% est_o = find(allcombinations(idx,:) == 1);
+% est_x = find(allcombinations(idx,:) == 2);
+% 
+% plot(step_times(est_o),0.5,'ro')
+% plot(step_times(est_x),0.5,'rx')
+% set(gcf,'Position',[100 100 500 200])
 
 % perform adding impact first (more accurate?)
 % if any step time is 1.5x larger than largest step time, missing an impact
@@ -166,12 +195,12 @@ est_o2 = find(label_allcombinations(idx,:) == 2);
 est_x1 = find(label_allcombinations(idx,:) == 3);
 est_x2 = find(label_allcombinations(idx,:) == 4);
 
-bigidxone1 = find(diff_matrix(idx,est_o1) > step_o1*1.5);
-bigidxone2 = find(diff_matrix(idx,est_o2) > step_o2*1.5);
+bigidxone1 = find(diff_matrix(idx,est_o1) > step_o1*1.58);
+bigidxone2 = find(diff_matrix(idx,est_o2) > step_o2*1.58);
 
 % diff_matrix(idx,est_x)
-bigidxtwo1 = find(diff_matrix(idx,est_x1) > step_x1*1.5);
-bigidxtwo2 = find(diff_matrix(idx,est_x2) > step_x2*1.5);
+bigidxtwo1 = find(diff_matrix(idx,est_x1) > step_x1*1.58);
+bigidxtwo2 = find(diff_matrix(idx,est_x2) > step_x2*1.58);
 
 bigidx = sort([est_o1(bigidxone1);est_o2(bigidxone2);est_x1(bigidxtwo1);est_x2(bigidxtwo2)]);
 if ~isempty(bigidx)
@@ -193,10 +222,8 @@ if ~isempty(bigidx)
     
     
     step_times = [step_times(1:change_idx);step_times(change_idx:end)];
-    disp(size(scores(1:change_idx)))
-    disp(size(scores(change_idx:end)))
-    scores = [scores(1:change_idx);scores(change_idx:end)];
-    [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels, real_impact_times, step_times, scores,step_o1, step_o2, step_x1, step_x2);
+    step_times_scores = [step_times_scores(1:change_idx);step_times_scores(change_idx:end)];
+    [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp(curr_ID_labels, real_impact_times, step_times, step_times_scores,step_o1, step_o2, step_x1, step_x2);
 
 else%     % below is old code:
 %     [change_val,~] = max(bigidx);
@@ -211,25 +238,25 @@ else%     % below is old code:
 
     % if all element in a column in diff_matrix is too small, delete, recursive
     % start from second element in both bc first element has diff = 0
-    smallidxone1 = find(diff_matrix(idx,est_o1(2:end)) < step_o1/1.55);
-    smallidxone2 = find(diff_matrix(idx,est_o2(2:end)) < step_o2/1.55);
-    smallidxtwo1 = find(diff_matrix(idx,est_x1(2:end)) < step_x1/1.55);
-    smallidxtwo2 = find(diff_matrix(idx,est_x2(2:end)) < step_x2/1.55);
+    smallidxone1 = find(diff_matrix(idx,est_o1(2:end)) < step_o1/1.58);
+    smallidxone2 = find(diff_matrix(idx,est_o2(2:end)) < step_o2/1.58);
+    smallidxtwo1 = find(diff_matrix(idx,est_x1(2:end)) < step_x1/1.58);
+    smallidxtwo2 = find(diff_matrix(idx,est_x2(2:end)) < step_x2/1.58);
     smallidx = sort([est_o1(smallidxone1+1),est_o2(smallidxone2+1),est_x1(smallidxtwo1+1),est_x2(smallidxtwo2+1)]); % weird that these are rows, bigidx is cols
     if ~isempty(smallidx)
         % delete element at smallidx or smallidx-1 depending on score
-        curr_score = scores(smallidx(1));
-        prev_score = scores(smallidx(1)-1);
+        curr_score = step_times_scores(smallidx(1));
+        prev_score = step_times_scores(smallidx(1)-1);
         if curr_score > prev_score
             step_times = [step_times(1:smallidx(1)-2); step_times(smallidx(1):end)];
-            scores(smallidx(1)-1) = [];
+            step_times_scores(smallidx(1)-1) = [];
 %             scores = [scores(1:smallidx(1)-2);scores(smallidx(1):end)];
         else
             step_times = [step_times(1:smallidx(1)-1); step_times(smallidx(1)+1:end)];
-            scores(smallidx(1)) = [];
+            step_times_scores(smallidx(1)) = [];
 %             scores = [scores(1:smallidx(1)-1);scores(smallidx(1)+1:end)];
         end
-        [estimateID_LR, step_times, scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,scores,step_o1,step_o2,step_x1,step_x2);
+        [estimateID_LR, step_times, step_times_scores] = recursive_stepID_limp(curr_ID_labels,real_impact_times,step_times,step_times_scores,step_o1,step_o2,step_x1,step_x2);
     end
 end
 

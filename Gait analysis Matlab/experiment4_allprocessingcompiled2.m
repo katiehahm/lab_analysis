@@ -60,15 +60,16 @@ est_overlapping = zeros(correctN,1); % value = 1 if two impacts overlap
 segments_list = unique(correct_estimates(:,3));
 segmentsN = segments_list(end)-segments_list(1) + 1;
 % extract values
-for seg = 1:segmentsN
-    seg_idx = find(correct_estimates(:,3) == (seg+1));
+for i = 1:length(segments_list)
+    seg = segments_list(i);
+    seg_idx = find(correct_estimates(:,3) == (seg));
     seg_estimates = correct_estimates(seg_idx,:);
     estimatesN = length(seg_estimates(:,1));
     for s = 1:sensorN
         % extract cwt of segment
         not_overlap = [];
         first_idx = round((seg_estimates(1,1)-0.5)*Fs_pcb);
-        last_idx = round((seg_estimates(estimatesN,1)+0.5)*Fs_pcb);
+        last_idx = min([round((seg_estimates(estimatesN,1)+0.5)*Fs_pcb),length(wien_pcbD(:,1))]);
         seg_pcb = wien_pcbD(first_idx:last_idx,s);
         [wt,f] = cwt(seg_pcb,Fs_pcb);
         valid_f_idx = find(freq_higher & f > freq_lower);
@@ -79,7 +80,7 @@ for seg = 1:segmentsN
         % extract features from cwt sum
         for i = 1:estimatesN
             % check for overlapping
-            if i~= estimatesN & seg_estimates(i,1) == seg_estimates(i+1,1)
+            if i~= estimatesN & round(seg_estimates(i,1),3) == round(seg_estimates(i+1,1),3)
                 est_overlapping(seg_idx(i)) = 1;
                 est_overlapping(seg_idx(i+1)) = 1;
             elseif est_overlapping(seg_idx(i)) == 0
@@ -167,7 +168,7 @@ end
 %% interpolation for overlapping impacts (without wiener) 5/17/22
 
 overlap_idx = find(est_overlapping == 1);
-for i = 3:length(overlap_idx) % 3 bc first segment is trash
+for i = 1:length(overlap_idx) 
     curr_idx = overlap_idx(i);
     curr_label = correct_estimates(curr_idx,2);
     if curr_label == 1 | curr_label == 2
@@ -216,7 +217,7 @@ for i = 3:length(overlap_idx) % 3 bc first segment is trash
         arrival_idx = round(correct_estimates(curr_idx,1)*Fs_pcb);
         est_arrival_idx(curr_idx,s) = arrival_idx;
         next_arrival_idx = curr_idx+1;
-        next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
+        next_arrival = round(correct_estimates(next_arrival_idx,1)*Fs_pcb);
         while est_arrival_idx(curr_idx,s) == next_arrival
             next_arrival_idx = next_arrival_idx+1;
             next_arrival = correct_estimates(next_arrival_idx,1)*Fs_pcb;
@@ -296,8 +297,8 @@ end
 % check if peak & energy extraction are correct
 % zoom in to the signal, ignore the zero and negative values
 % peaks should match
-test_start = 100;
-test_end = 130;
+test_start = 70;
+test_end = 95;
 test_seg = wien_pcbD(est_arrival_idx(test_start,1):est_arrival_idx(test_end,1),1);
 [wt,f] = cwt(test_seg,Fs_pcb);
 valid_f_idx = find(freq_higher & f > freq_lower);
@@ -315,8 +316,9 @@ plot(est_arrival_idx(test_start:test_end,1)-est_arrival_idx(test_start,1),est_pe
 est_energy(test_start:test_end,1)
 
 %% save features to mat file
-save(filepath,'correct_coords','correct_estimates','est_arrival_idx','est_cwt_energy','est_cwt_peak','est_energy',...
+save(filename,'correct_coords','correct_estimates','est_arrival_idx','est_cwt_energy','est_cwt_peak','est_energy',...
     'est_overlapping','est_peak_mag','est_last_idx','correct_ta','correctN','-append')
+disp(append("Saved as ", filename))
 
 %% make localization csv with overlapping impacts for tracking 5/16/22
 
@@ -326,10 +328,11 @@ featureV_p2 = zeros(1,53);
 trainValues = ones(correctN,2); % trainvalue label, person ID
 seg_array = unique(correct_estimates(:,3));
 % label starts of walking segments
-for i = 2:seg_array(end)
-    this_seg_idx = find(correct_estimates(:,3) == i);
-    person1_idx = find(correct_estimates(this_seg_idx,2) == 1);
-    person2_idx = find(correct_estimates(this_seg_idx,2) == 2);
+for i = 1:length(segments_list)
+    seg = segments_list(i);
+    this_seg_idx = find(correct_estimates(:,3) == seg);
+    person1_idx = find(correct_estimates(this_seg_idx,2) == 1 | correct_estimates(this_seg_idx,2) == 2);
+    person2_idx = find(correct_estimates(this_seg_idx,2) == 3 | correct_estimates(this_seg_idx,2) == 4);
     trainValues(this_seg_idx(person1_idx(1)),:) = [0, 1];
     trainValues(this_seg_idx(person2_idx(1)),:) = [0, 2];
 end
@@ -344,6 +347,11 @@ for i = 1:correctN
     if trainValues(i,1) ~= 0
         curr_seg = correct_estimates(i,3)-1;
         curr_person = correct_estimates(i,2);
+        if curr_person == 1 || curr_person == 2
+            curr_person = 1;
+        else
+            curr_person = 2;
+        end
         if mod(curr_seg,seg_mod) ~= 0 | seg_count == 5
             trainValues(i,:) = [seg_count,curr_person];
             seg_new = true;
@@ -365,7 +373,7 @@ for i = 1:correctN
     else
         % find prev index
         prev_idx = i-1;
-        while correct_estimates(prev_idx,2) ~= correct_estimates(i,2)
+        while floor(correct_estimates(prev_idx,2)/3) ~= floor(correct_estimates(i,2)/3)
             prev_idx = prev_idx - 1;
         end
         diff_cwt_peak = est_cwt_peak(i,:) - est_cwt_peak(prev_idx,:);
@@ -376,7 +384,7 @@ for i = 1:correctN
             est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:),...
             diff_cwt_peak,diff_cwt_energy,diff_peak_mag,diff_energy,correct_coords(prev_idx,1)];
     end
-    if correct_estimates(i,2) == 1
+    if correct_estimates(i,2) == 1 | correct_estimates(i,2) == 2
         featureV_p1(end+1,:) = feature;
     else
         featureV_p2(end+1,:) = feature;
@@ -384,28 +392,94 @@ for i = 1:correctN
 end
 featureV_p1(1,:) = [];
 featureV_p2(1,:) = [];
-filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
-filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
+filename1 = [filename,'_localization_p1_withta.csv'];
+filename2 = [filename,'_localization_p2_withta.csv'];
+% filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
+% filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
 writematrix(featureV_p1,filename1)
 writematrix(featureV_p2,filename2)
 
+% move files from ProcessedData to ExcelData
 % then run exp4_recursive_localization.py OR
 % exp4_notrecursive_localization.py
 
-%% make TA csv with overlapping impacts 5/18/22
+% %% make TA csv with overlapping impacts 5/18/22
+% 
+% % copy over excel files, delete first row and column!
+% filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular2_localization_p2_results.csv';
+% T = readtable(filename);
+% A = table2array(T);
+% real_loc = A(:,1);
+% predict_loc = A(:,2);
+% 
+% filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular2_localization_p2_withta.csv';
+% T = readtable(filename);
+% A = table2array(T);
+% ta_arr = A(:,4);
+% features = A(:,5:28);
+% 
+% s1 = [-3.590,-3.343];
+% s2 = [-3.580,2.61];
+% s3 = [3.639,2.11];
+% s4 = [3.650,-3.412];
+% % these are values from interpolating s1-4
+% s5 = [3.61,2.36];
+% s6 = [3.62,-3.3775];
+% featureV = zeros(1,31);
+% 
+% for i = 1:length(real_loc)
+%     xcoord = predict_loc(i);
+%     % only using x coord
+%     % ############################################################## check!
+%     dist1 = sqrt( (xcoord-s1(1)).^2 );
+%     dist2 = sqrt( (xcoord-s2(1)).^2 );
+%     dist3 = sqrt( (xcoord-s3(1)).^2 );
+%     dist4 = sqrt( (xcoord-s4(1)).^2 );
+%     dist5 = sqrt( (xcoord-s5(1)).^2 );
+%     dist6 = sqrt( (xcoord-s6(1)).^2 );
+% %     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
+% %     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
+% %     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
+% %     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
+% %     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
+% %     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
+% 
+%     % acc, dist 1-6, cwt peak, cwt energy, peak, energy
+%     feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
+%     featureV(end+1,:) = feature;
+% end
+% featureV(1,:) = [];
+% filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular2_ta_p2.csv';
+% writematrix(featureV,filename)
+% 
+% % then run exp4_TAestimation.py
 
-filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\jenny1_trackingloc_regular1_p2_results.csv';
-T = readtable(filename);
-A = table2array(T);
-real_loc = A(:,1);
-predict_loc = A(:,2);
+%% making a localization csv for all takes 5/24/22
 
-filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular1_localization_p2_withta.csv';
-T = readtable(filename);
-A = table2array(T);
-ta_arr = A(:,4);
-features = A(:,5:28);
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+newA = zeros(1,53);
+person = '2';
+for t = 1:length(takes)
+    filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\both_', char(takes(t)),'_localization_p',person','_withta.csv'];
+    T = readtable(filename);
+    A = table2array(T);
+    newA = [newA;A];
+end
+newA(1,:) = []; % initialization
 
+filename = ['C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/April 3/ProcessedData/ExcelData/alltakes_localization_p',person','_withta.csv'];
+writematrix(newA,filename)
+
+%% make TA csv with overlapping impacts 5/26/22 using alltakes localization results
+
+filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\alltakes_localization_p1_results.csv';
+T = readtable(filename1);
+loc_results1 = table2array(T);
+filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\alltakes_localization_p2_results.csv';
+T = readtable(filename2);
+loc_results2 = table2array(T);
+
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
 s1 = [-3.590,-3.343];
 s2 = [-3.580,2.61];
 s3 = [3.639,2.11];
@@ -413,102 +487,161 @@ s4 = [3.650,-3.412];
 % these are values from interpolating s1-4
 s5 = [3.61,2.36];
 s6 = [3.62,-3.3775];
-featureV = zeros(1,31);
 
-for i = 1:length(real_loc)
-    xcoord = predict_loc(i);
-    % only using x coord
-    % ############################################################## check!
-    dist1 = sqrt( (xcoord-s1(1)).^2 );
-    dist2 = sqrt( (xcoord-s2(1)).^2 );
-    dist3 = sqrt( (xcoord-s3(1)).^2 );
-    dist4 = sqrt( (xcoord-s4(1)).^2 );
-    dist5 = sqrt( (xcoord-s5(1)).^2 );
-    dist6 = sqrt( (xcoord-s6(1)).^2 );
-%     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
-%     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
-%     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
-%     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
-%     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
-%     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
 
-    % acc, dist 1-6, cwt peak, cwt energy, peak, energy
-    feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
-    featureV(end+1,:) = feature;
+for p = 1:2
+    person = int2str(p);
+    rowcount = 1;
+    for t = 1:length(takes)
+        filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\both_', char(takes(t)),'_localization_p',person','_withta.csv'];
+        T = readtable(filename);
+        A = table2array(T);
+        numrows = length(A(:,1));
+        if p == 1
+            pred_locs = loc_results1(:,2); % second col has est values
+        else
+            pred_locs = loc_results2(:,2);
+        end
+        locs = pred_locs(rowcount:rowcount + numrows - 1);
+        featureV = zeros(1,31);
+        for i = 1:numrows
+            xcoord = locs(i);
+            dist1 = sqrt( (xcoord-s1(1)).^2 );
+            dist2 = sqrt( (xcoord-s2(1)).^2 );
+            dist3 = sqrt( (xcoord-s3(1)).^2 );
+            dist4 = sqrt( (xcoord-s4(1)).^2 );
+            dist5 = sqrt( (xcoord-s5(1)).^2 );
+            dist6 = sqrt( (xcoord-s6(1)).^2 );
+            feature = [A(i,4),dist1,dist2,dist3,dist4,dist5,dist6,A(i,5:28)];
+            featureV(end+1,:) = feature;
+        end
+        featureV(1,:) = []; % initialization
+        newfilename = ['C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/April 3/ProcessedData/ExcelData/both_', char(takes(t)),'_ta_p',person,'.csv'];
+        writematrix(featureV,newfilename)
+        rowcount = rowcount + numrows;
+    end
 end
-featureV(1,:) = [];
-filename = 'C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular1_ta_p2.csv';
-writematrix(featureV,filename)
 
 % then run exp4_TAestimation.py
 
+%% doing kmeans on TA estimation results all takes 5/24/22
+
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+newA = zeros(1,53);
+TA_rmse = 0;
+figure;
+hold on
+for t = 1:length(takes)
+    filename1 = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\both_', char(takes(t)),'_ta_p1_results.csv'];
+    T1 = readtable(filename1);
+    A1 = table2array(T1);
+    est_TA1 = A1(2:end,3);
+    [~,cent1] = kmeans(est_TA1,2);
+    
+    filename2 = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\ExcelData\both_', char(takes(t)),'_ta_p2_results.csv'];
+    T2 = readtable(filename2);
+    A2 = table2array(T2);
+    est_TA2 = A2(2:end,3);
+    [~,cent2] = kmeans(est_TA2,2);
+    
+    load(['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\both_',char(takes(t))])
+    foot_labels = correct_coords(:,3);
+    p1f1_idx = find(foot_labels == 1);
+    p1f2_idx = find(foot_labels == 2);
+    p2f1_idx = find(foot_labels == 3);
+    p2f2_idx = find(foot_labels == 4);
+    real_p1f1 = mean(correct_ta(p1f1_idx));
+    real_p1f2 = mean(correct_ta(p1f2_idx));
+    real_p2f1 = mean(correct_ta(p2f1_idx));
+    real_p2f2 = mean(correct_ta(p2f2_idx));
+    
+    plot(min(cent1),min([real_p1f1,real_p1f2]),'ro')
+    plot(max(cent1),max([real_p1f1,real_p1f2]),'bo')
+    plot(min(cent2),min([real_p2f1,real_p2f2]),'rx')
+    plot(max(cent2),max([real_p2f1,real_p2f2]),'bx')
+    legend('Leg 1 person 1','Leg 2 person 1','Leg 1 person 2','Leg 2 person 2')
+    
+    % calculate rmse
+    TA_rmse = TA_rmse + abs(min(cent1)-min([real_p1f1,real_p1f2]));
+    TA_rmse = TA_rmse + abs(max(cent1)-max([real_p1f1,real_p1f2]));
+    TA_rmse = TA_rmse + abs(min(cent2)-min([real_p2f1,real_p2f2]));
+    TA_rmse = TA_rmse + abs(max(cent2)-max([real_p2f1,real_p2f2]));
+end
+
+xlabel('Estimated TA values (g)')
+ylabel('Measured TA values (g)')
+title('TA estimation performance for each leg across all interventions')
+xlim([1 5])
+ylim([1 5])
+TA_rmse/(4*length(takes)) % final rmse
+
 %% make localization csv without overlapping impacts 5/16/22
-
-featureV_p1 = zeros(1,26);
-featureV_p2 = zeros(1,26);
-for i = 1:length(est_coordinates)
-    if est_overlapping(i) == 0 % not overlapping
-        feature = [correct_coords(i,1),abs(correct_ta(i)),est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:)];
-        if correct_estimates(i,2) == 1
-            featureV_p1(end+1,:) = feature;
-        else
-            featureV_p2(end+1,:) = feature;
-        end
-    end
-end
-featureV_p1(1,:) = [];
-featureV_p2(1,:) = [];
-filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
-filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
-writematrix(featureV_p1,filename1)
-writematrix(featureV_p2,filename2)
-
-%% make TA csv without overlapping impacts 5/16/22
-
-filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1';
-T = readtable([filename,'_results.csv']);
-A = table2array(T);
-real_loc = A(:,1);
-predict_loc = A(:,2);
-
-T = readtable([filename,'_withta.csv']);
-A = table2array(T);
-ta_arr = A(:,2);
-features = A(:,3:end);
-
-s1 = [-3.590,-3.343];
-s2 = [-3.580,2.61];
-s3 = [3.639,2.11];
-s4 = [3.650,-3.412];
-% these are values from interpolating s1-4
-s5 = [3.61,2.36];
-s6 = [3.62,-3.3775];
-featureV = zeros(1,31);
-
-for i = 1:length(real_loc)
-    xcoord = predict_loc(i);
-    % only using x coord
-    % ############################################################## check!
-    dist1 = sqrt( (xcoord-s1(1)).^2 );
-    dist2 = sqrt( (xcoord-s2(1)).^2 );
-    dist3 = sqrt( (xcoord-s3(1)).^2 );
-    dist4 = sqrt( (xcoord-s4(1)).^2 );
-    dist5 = sqrt( (xcoord-s5(1)).^2 );
-    dist6 = sqrt( (xcoord-s6(1)).^2 );
-%     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
-%     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
-%     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
-%     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
-%     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
-%     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
-
-    % acc, dist 1-6, cwt peak, cwt energy, peak, energy
-    feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
-    featureV(end+1,:) = feature;
-end
-featureV(1,:) = [];
-filename = [filename, '_TA.csv'];
-writematrix(featureV,filename)
+% 
+% featureV_p1 = zeros(1,26);
+% featureV_p2 = zeros(1,26);
+% for i = 1:length(est_coordinates)
+%     if est_overlapping(i) == 0 % not overlapping
+%         feature = [correct_coords(i,1),abs(correct_ta(i)),est_cwt_peak(i,:),est_cwt_energy(i,:),est_peak_mag(i,:),est_energy(i,:)];
+%         if correct_estimates(i,2) == 1
+%             featureV_p1(end+1,:) = feature;
+%         else
+%             featureV_p2(end+1,:) = feature;
+%         end
+%     end
+% end
+% featureV_p1(1,:) = [];
+% featureV_p2(1,:) = [];
+% filename1 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1_withta.csv';
+% filename2 = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p2_withta.csv';
+% writematrix(featureV_p1,filename1)
+% writematrix(featureV_p2,filename2)
+% 
+% %% make TA csv without overlapping impacts 5/16/22
+% 
+% filename = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\ExcelData\both_regular1_localization_p1';
+% T = readtable([filename,'_results.csv']);
+% A = table2array(T);
+% real_loc = A(:,1);
+% predict_loc = A(:,2);
+% 
+% T = readtable([filename,'_withta.csv']);
+% A = table2array(T);
+% ta_arr = A(:,2);
+% features = A(:,3:end);
+% 
+% s1 = [-3.590,-3.343];
+% s2 = [-3.580,2.61];
+% s3 = [3.639,2.11];
+% s4 = [3.650,-3.412];
+% % these are values from interpolating s1-4
+% s5 = [3.61,2.36];
+% s6 = [3.62,-3.3775];
+% featureV = zeros(1,31);
+% 
+% for i = 1:length(real_loc)
+%     xcoord = predict_loc(i);
+%     % only using x coord
+%     % ############################################################## check!
+%     dist1 = sqrt( (xcoord-s1(1)).^2 );
+%     dist2 = sqrt( (xcoord-s2(1)).^2 );
+%     dist3 = sqrt( (xcoord-s3(1)).^2 );
+%     dist4 = sqrt( (xcoord-s4(1)).^2 );
+%     dist5 = sqrt( (xcoord-s5(1)).^2 );
+%     dist6 = sqrt( (xcoord-s6(1)).^2 );
+% %     dist1 = sqrt( (xcoord-s1(1)).^2 + (ycoord-s1(2)).^2 );
+% %     dist2 = sqrt( (xcoord-s2(1)).^2 + (ycoord-s2(2)).^2 );
+% %     dist3 = sqrt( (xcoord-s3(1)).^2 + (ycoord-s3(2)).^2 );
+% %     dist4 = sqrt( (xcoord-s4(1)).^2 + (ycoord-s4(2)).^2 );
+% %     dist5 = sqrt( (xcoord-s5(1)).^2 + (ycoord-s5(2)).^2 );
+% %     dist6 = sqrt( (xcoord-s6(1)).^2 + (ycoord-s6(2)).^2 );
+% 
+%     % acc, dist 1-6, cwt peak, cwt energy, peak, energy
+%     feature = [abs(ta_arr(i)),dist1,dist2,dist3,dist4,dist5,dist6,features(i,:)];
+%     featureV(end+1,:) = feature;
+% end
+% featureV(1,:) = [];
+% filename = [filename, '_TA.csv'];
+% writematrix(featureV,filename)
 
 
 %% wiener filter & interpolation for overlapping impacts 5/17/22
