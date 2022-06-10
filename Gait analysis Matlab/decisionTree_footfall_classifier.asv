@@ -14,7 +14,7 @@ energy = zeros(impactN,sensorN);
 cwt_energy = zeros(impactN,sensorN);
 cwt_peak = zeros(impactN,sensorN);
 overlapping = zeros(impactN,1);
-overlap_thresh = 0.005;
+overlap_thresh = 1000; % # indexes that's considered an overlapping impact
 window_width = 0.35; % in (s) of how long to set initial lastidx of window
 
 Y = impacts(:,4);
@@ -43,7 +43,7 @@ for seg = 2:length(segments)
             fsr_start_idx = round(start_time_fsr(i)*Fs_pcb);
             starti = fsr_start_idx - 1000;
             if i ~= length(start_time_fsr) % not last element
-                if start_time_fsr(i+1)*Fs_pcb - start_time_fsr(i)*Fs_pcb > 1000
+                if start_time_fsr(i+1)*Fs_pcb - start_time_fsr(i)*Fs_pcb > overlap_thresh
                     lasti = min([round(start_time_fsr(i+1)*Fs_pcb), starti + round(window_width*Fs_pcb)]);
                 else
                     lasti = starti + round(window_width*Fs_pcb);
@@ -97,6 +97,108 @@ Y(overlap_idx) = 3;
 
 
 X = [width,cwt_peak,cwt_energy,peak_mag,energy];
+tree = fitctree(X,Y);
+
+%% just classify 1 or 2 (no overlapping = 3 like above section)
+% copied from above section
+
+% used to classify footfall person 1 or 2 using decision tree
+
+% load and make training set from regular 1
+load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\both_regular1.mat')
+
+freq_lower = 100; % Hz; frequency limits for cwt
+freq_higher = 350;
+arrive_idx_all = zeros(impactN,sensorN);
+last_idx_all = zeros(impactN,sensorN);
+width = zeros(impactN,sensorN);
+peak_mag = zeros(impactN,sensorN);
+energy = zeros(impactN,sensorN);
+cwt_energy = zeros(impactN,sensorN);
+cwt_peak = zeros(impactN,sensorN);
+overlapping = zeros(impactN,1);
+overlap_thresh = 1000; % # indexes that's considered an overlapping impact
+window_width = 0.35; % in (s) of how long to set initial lastidx of window
+
+Y = impacts(:,4);
+Y(Y==2) = 1;
+Y(Y==3) = 2;
+Y(Y==4) = 2;
+
+for seg = 2:length(segments)
+    start_impact_idx = segments(seg-1);
+    last_impact_idx = segments(seg)-1;
+    start_time_fsr = impacts(start_impact_idx:last_impact_idx,1)./Fs_fsr;
+    pcb_start_idx = round((start_time_fsr(1)-0.5)*Fs_pcb);
+    pcb_last_idx = round((start_time_fsr(end)+0.5)*Fs_pcb);
+    for s = 1:sensorN
+        seg_pcb = wien_pcbD(pcb_start_idx:pcb_last_idx,s);
+        [wt,f] = cwt(seg_pcb,Fs_pcb);
+        valid_f_idx = find(freq_higher & f > freq_lower);
+        cwt_mag = abs(wt(valid_f_idx,:));
+        sum_cwt = sum(cwt_mag,1);
+        sum_smooth_cwt = movmean(sum_cwt, 1000);
+        figure; 
+        plot(sum_smooth_cwt)
+        hold on
+        for i = 1:length(start_time_fsr)
+            global_idx = start_impact_idx + i - 1;
+            fsr_start_idx = round(start_time_fsr(i)*Fs_pcb);
+            starti = fsr_start_idx - 1000;
+            if i ~= length(start_time_fsr) % not last element
+                if start_time_fsr(i+1)*Fs_pcb - start_time_fsr(i)*Fs_pcb > overlap_thresh
+                    lasti = min([round(start_time_fsr(i+1)*Fs_pcb), starti + round(window_width*Fs_pcb)]);
+                else
+                    lasti = starti + round(window_width*Fs_pcb);
+                end
+            else
+                lasti = min([pcb_last_idx,starti + round(window_width*Fs_pcb)]);
+            end
+            cwt_window = sum_smooth_cwt(starti-pcb_start_idx:lasti-pcb_start_idx);
+            % find arrival idx with aic pick
+            aic_idx = aic_pick(cwt_window, 'to_peak');
+            arrive_idx = aic_idx + starti;
+            if arrive_idx < fsr_start_idx
+                arrive_idx = fsr_start_idx;
+            end
+            % last_idx is the 1st idx that goes under thresh after peak
+            cwt_window = sum_smooth_cwt(arrive_idx:lasti-pcb_start_idx);
+            [~,maxidx] = max(cwt_window);
+            under_thresh_idx = find(cwt_window(maxidx:end) < 0.00065);
+            if isempty(under_thresh_idx)
+                last_idx = lasti;
+            else
+                last_idx = under_thresh_idx(1) + aic_idx - 1 + maxidx - 1 + starti;
+            end
+            % store vars
+            arrive_idx_all(global_idx,s) = arrive_idx;
+            last_idx_all(global_idx,s) = last_idx;
+            width(global_idx,s) = last_idx - arrive_idx;
+            cwt_window = sum_smooth_cwt(arrive_idx-pcb_start_idx:last_idx-pcb_start_idx);
+            cwt_peak(global_idx,s) = max(cwt_window);
+            cwt_energy(global_idx,s) = sum(abs(cwt_window).^2);
+            pcb_window = wien_pcbD(arrive_idx:last_idx,s);
+            peak_mag(global_idx,s) = max(pcb_window);
+            energy(global_idx,s) = sum(abs(pcb_window).^2);
+            % overlap check
+            if i > 1
+                if round(start_time_fsr(i)*Fs_pcb) - round(start_time_fsr(i-1)*Fs_pcb) < 1000
+                    overlapping(global_idx) = 1;
+                    overlapping(global_idx-1) = 1;
+                end
+            end
+            % sanity check plot
+            plot(arrive_idx-pcb_start_idx,0,'rx','MarkerSize',8)
+            plot(last_idx-pcb_start_idx,0,'gx','MarkerSize',12)
+        end
+        
+    end
+end
+
+X = [width,cwt_peak,cwt_energy,peak_mag,energy];
+overlap_idx = find(overlapping == 1);
+Y(overlap_idx) = [];
+X(overlap_idx,:) = [];
 tree = fitctree(X,Y);
 
 %% load and make testing set from regular2
@@ -333,17 +435,17 @@ for seg = 2:length(segments)
     end
 end
 
-
 X_test = [width,cwt_peak,cwt_energy,peak_mag,energy];
 
-Y_predict = predict(tree,X_test);
+%% predict with tree 
 
+Y_predict = predict(tree,X_test);
 
 figure;
 plot(detected_starts(Y_predict == 1)./Fs_pcb,0.5,'ro')
 hold on
 plot(detected_starts(Y_predict == 2)./Fs_pcb,0.5,'rx')
-plot(detected_starts(Y_predict == 3)./Fs_pcb,0.5,'r*')
+% plot(detected_starts(Y_predict == 3)./Fs_pcb,0.5,'r*')
 real_o = find(impacts(:,4) == 1 | impacts(:,4) == 2);
 plot(impacts(real_o,1)./Fs_fsr,0,'bo')
 real_x = find(impacts(:,4) == 3 | impacts(:,4) == 4);
@@ -355,13 +457,563 @@ success_rate = length(find(error == 0))/length(error)
 
 %% recursively iterate through to fix labeling using step time
 
+% find segment end times
+detected_seg_starts = []; % start times of segments
+for i = 2:length(detected_starts)
+    if (detected_starts(i) - detected_starts(i-1))/Fs_pcb > 1.5 
+        detected_seg_starts(end+1) = detected_starts(i)/Fs_pcb;
+    end
+end
+detected_seg_starts(end+1) = detected_starts(end)/Fs_pcb + 0.5;
+
 % first fix any big steps
+o_idx = find(Y_predict == 1);
+o_wrong = false;
+for i = 2:length(o_idx)
+    curr_time = detected_starts(o_idx(i))/Fs_pcb;
+    prev_time = detected_starts(o_idx(i-1))/Fs_pcb;
+    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+        if curr_time - prev_time > 1.75*step_o1
+            o_wrong = true;
+            times_inbetween = detected_starts(o_idx(i-1):o_idx(i))./Fs_pcb - prev_time;
+            [~,minidx] = min(abs(times_inbetween - step_o1));
+            Y_predict(o_idx(i-1) + minidx - 1) = 1;
+            o_idx = find(Y_predict == 1);
+            break;
+        end
+    end
+end
+while o_wrong
+    o_wrong = false;
+    for i = 2:length(o_idx)
+        curr_time = detected_starts(o_idx(i))/Fs_pcb;
+        prev_time = detected_starts(o_idx(i-1))/Fs_pcb;
+        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+            if curr_time - prev_time > 1.75*step_o1
+                o_wrong = true;
+                times_inbetween = detected_starts(o_idx(i-1):o_idx(i))./Fs_pcb - prev_time;
+                [~,minidx] = min(abs(times_inbetween - step_o1));
+                Y_predict(o_idx(i-1) + minidx - 1) = 1;
+                o_idx = find(Y_predict == 1);
+                break;
+            end
+        end
+    end
+end
 
+figure;
+plot(detected_starts(Y_predict == 1)./Fs_pcb,0.5,'ro')
+hold on
+plot(detected_starts(Y_predict == 2)./Fs_pcb,0.5,'rx')
+real_o = find(impacts(:,4) == 1 | impacts(:,4) == 2);
+plot(impacts(real_o,1)./Fs_fsr,0,'bo')
+real_x = find(impacts(:,4) == 3 | impacts(:,4) == 4);
+plot(impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-0.5,1])
+    
+% next fix big steps in x by replacing or overlapping
+o_idx = find(Y_predict == 1);
+x_idx = find(Y_predict == 2);
+x_wrong = false;
+for i = 2:length(x_idx)
+    curr_time = detected_starts(x_idx(i))/Fs_pcb;
+    prev_time = detected_starts(x_idx(i-1))/Fs_pcb;
+    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+        if curr_time - prev_time > 1.75*step_x1
+            x_wrong = true;
+            times_inbetween = detected_starts(x_idx(i-1):x_idx(i))./Fs_pcb - prev_time;
+            [~,minidx] = min(abs(times_inbetween - step_x1));
+            % check if this should be replaced with x or made overlapping
+            curr_time
+            minidx
+            curr_idx = x_idx(i-1) + minidx - 1;
+            curr_o_idx = find(o_idx == curr_idx);
+            next_o_time = detected_starts(o_idx(curr_o_idx)+1)./Fs_pcb;
+            prev_o_time = detected_starts(o_idx(curr_o_idx)-1)./Fs_pcb;
+            curr_o_time = detected_starts(o_idx(curr_o_idx))./Fs_pcb;
+            if abs((next_o_time-prev_o_time) - step_o1) < abs((next_o_time-curr_o_time) - step_o1)
+                % replace 
+                Y_predict(curr_idx) = 2;
+                x_idx = find(Y_predict == 2);
+            else
+                % overlapping
+                Y_predict = [Y_predict(1:curr_idx);2;Y_predict(curr_idx+1:end)];
+                detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+            end
+            x_idx = find(Y_predict == 2);
+            break;
+        end
+    end
+end
+while x_wrong
+    x_wrong = false;
+    for i = 2:length(x_idx)
+        curr_time = detected_starts(x_idx(i))/Fs_pcb;
+        prev_time = detected_starts(x_idx(i-1))/Fs_pcb;
+        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+            if curr_time - prev_time > 1.75*step_x1
+                x_wrong = true;
+                times_inbetween = detected_starts(x_idx(i-1):x_idx(i))./Fs_pcb - prev_time;
+                [~,minidx] = min(abs(times_inbetween - step_x1));
+                % check if this should be replaced with x or made overlapping
+                curr_time
+                minidx
+                curr_idx = x_idx(i-1) + minidx - 1;
+                curr_o_idx = find(o_idx == curr_idx);
+                next_o_time = detected_starts(o_idx(curr_o_idx)+1)./Fs_pcb;
+                prev_o_time = detected_starts(o_idx(curr_o_idx)-1)./Fs_pcb;
+                curr_o_time = detected_starts(o_idx(curr_o_idx))./Fs_pcb;
+                if abs((next_o_time-prev_o_time) - step_o1) < abs((next_o_time-curr_o_time) - step_o1)
+                    % replace 
+                    Y_predict(curr_idx) = 2;
+                    x_idx = find(Y_predict == 2);
+                else
+                    % overlapping
+                    Y_predict = [Y_predict(1:curr_idx);2;Y_predict(curr_idx+1:end)];
+                    detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+                end
+                x_idx = find(Y_predict == 2);
+                break;
+            end
+        end
+    end
+end
 
+figure;
+plot(detected_starts(Y_predict == 1)./Fs_pcb,0.5,'ro')
+hold on
+plot(detected_starts(Y_predict == 2)./Fs_pcb,0.5,'rx')
+real_o = find(impacts(:,4) == 1 | impacts(:,4) == 2);
+plot(impacts(real_o,1)./Fs_fsr,0,'bo')
+real_x = find(impacts(:,4) == 3 | impacts(:,4) == 4);
+plot(impacts(real_x,1)./Fs_fsr,0,'bx')
+ylim([-0.5,1])
 
+% calculate success rate at this point
+labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb, Fs_fsr)
 
+% delete any small steps for o
 
+small_scaler = 0.4;
+% first fix any big steps
+o_idx = find(Y_predict == 1);
+x_idx = find(Y_predict == 2);
+o_wrong = false;
+for i = 2:length(o_idx)
+    curr_time = detected_starts(o_idx(i))/Fs_pcb;
+    prev_time = detected_starts(o_idx(i-1))/Fs_pcb;
+    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+        if curr_time - prev_time < small_scaler*step_o1
+            o_wrong = true;
+            % decide if remove or relabel for both impacts
+            x_prev = find(detected_starts(x_idx) <= curr_time*Fs_pcb);
+            x_prev = x_prev(end);
+            x_prev_time = detected_starts(x_idx(x_prev))/Fs_pcb;
+            x_next = find(detected_starts(x_idx) > curr_time*Fs_pcb);
+            x_next = x_next(1);
+            x_next_time = detected_starts(x_idx(x_next))/Fs_pcb;
 
+            % check that prev and next x are in same seg
+            if find(detected_seg_starts > x_next_time,1) == find(detected_seg_starts > curr_time,1) % in same segment
+                if find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                    curr_or_prev = 0;
+                    curr_margin = abs(x_next_time - curr_time - step_x1) + abs(curr_time - x_prev_time - step_x1);
+                    prev_margin = abs(x_next_time - prev_time - step_x1) + abs(prev_time - x_prev_time - step_x1);
+                    % check if better to replace
+                    if abs(x_next_time - x_prev_time - step_x1) > abs(x_next_time - curr_time - step_x1)
+                        if abs(x_next_time - x_prev_time - step_x1) > abs(curr_time - x_prev_time - step_x1)
+                            curr_or_prev = 1;
+                        end
+                    end
+                    if abs(x_next_time - x_prev_time - step_x1) > abs(x_next_time - prev_time - step_x1)
+                        if abs(x_next_time - x_prev_time - step_x1) > abs(prev_time - x_prev_time - step_x1)
+                            if curr_or_prev == 1 & prev_margin < curr_margin
+                                curr_or_prev = 2;
+                            elseif curr_or_prev == 0
+                                curr_or_prev = 2;
+                            end
+                        end
+                    end
+                else % only next x is in same seg
+                    curr_or_prev = 0;
+                    replaced_curr_time = abs(x_next_time - curr_time - step_x1);
+                    replaced_prev_time = abs(x_next_time - prev_time - step_x1);
+                    if replaced_prev_time < replaced_curr_time
+                        if replaced_prev_time < step_x1*0.3 
+                            curr_or_prev = 2;
+                        end
+                    else
+                        if replaced_curr_time < step_x1*0.3 
+                            curr_or_prev = 1;
+                        end
+                    end
+                end
+            elseif find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                % only prev x is in same seg
+                curr_or_prev = 0;
+                replaced_curr_time = abs(curr_time - x_prev_time - step_x1);
+                replaced_prev_time = abs(prev_time - x_prev_time - step_x1);
+                if replaced_prev_time < replaced_curr_time
+                    if replaced_prev_time < step_x1*0.3 
+                        curr_or_prev = 2;
+                    end
+                else
+                    if replaced_curr_time < step_x1*0.3 
+                        curr_or_prev = 1;
+                    end
+                end
+            end
+            if curr_or_prev == 0 % remove impact
+                next_o_time = detected_starts(o_idx(i+1))/Fs_pcb;
+                prev_o_time = detected_starts(o_idx(i-2))/Fs_pcb;
+                if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > next_o_time,1) % in same segment
+                    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_o_time,1) % in same segment
+                        curr_o_margin = abs(next_o_time - curr_time - step_o1) + abs(curr_time - prev_o_time - step_o1);
+                        prev_o_margin = abs(next_o_time - prev_time - step_o1) + abs(prev_time - prev_o_time - step_o1);
+
+                    else
+                        curr_o_margin = abs(next_o_time - curr_time - step_o1);
+                        prev_o_margin = abs(next_o_time - prev_time - step_o1);
+                    end
+                elseif find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_o_time,1) % in same segment
+                    curr_o_margin = abs(curr_time - prev_o_time - step_o1);
+                    prev_o_margin = abs(prev_time - prev_o_time - step_o1);
+                end
+                if curr_o_margin > prev_o_margin % delete current impact
+                    detected_starts(o_idx(i)) = [];
+                    Y_predict(o_idx(i)) = [];
+                else % delete prev impact
+                    detected_starts(o_idx(i-1)) = [];
+                    Y_predict(o_idx(i-1)) = [];
+                end
+            elseif curr_or_prev == 1 % replace current impact
+                Y_predict(o_idx(i)) = 2;
+            else % replace previous impact
+                Y_predict(o_idx(i-1)) = 2;
+            end
+            o_idx = find(Y_predict == 1);
+            x_idx = find(Y_predict == 2);
+            break;
+        end
+    end
+end
+while o_wrong
+    o_wrong = false;
+    for i = 2:length(o_idx)
+        curr_time = detected_starts(o_idx(i))/Fs_pcb;
+        prev_time = detected_starts(o_idx(i-1))/Fs_pcb;
+        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+            if curr_time - prev_time < small_scaler*step_o1
+                o_wrong = true;
+                % decide if remove or relabel for both impacts
+                x_prev = find(detected_starts(x_idx) <= curr_time*Fs_pcb);
+                x_prev = x_prev(end);
+                x_prev_time = detected_starts(x_idx(x_prev))/Fs_pcb;
+                x_next = find(detected_starts(x_idx) > curr_time*Fs_pcb);
+                x_next = x_next(1);
+                x_next_time = detected_starts(x_idx(x_next))/Fs_pcb;
+
+                % check that prev and next x are in same seg
+                if find(detected_seg_starts > x_next_time,1) == find(detected_seg_starts > curr_time,1) % in same segment
+                    if find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                        curr_or_prev = 0;
+                        curr_margin = abs(x_next_time - curr_time - step_x1) + abs(curr_time - x_prev_time - step_x1);
+                        prev_margin = abs(x_next_time - prev_time - step_x1) + abs(prev_time - x_prev_time - step_x1);
+                        % check if better to replace
+                        if abs(x_next_time - x_prev_time - step_x1) > abs(x_next_time - curr_time - step_x1)
+                            if abs(x_next_time - x_prev_time - step_x1) > abs(curr_time - x_prev_time - step_x1)
+                                curr_or_prev = 1;
+                            end
+                        end
+                        if abs(x_next_time - x_prev_time - step_x1) > abs(x_next_time - prev_time - step_x1)
+                            if abs(x_next_time - x_prev_time - step_x1) > abs(prev_time - x_prev_time - step_x1)
+                                if curr_or_prev == 1 & prev_margin < curr_margin
+                                    curr_or_prev = 2;
+                                elseif curr_or_prev == 0
+                                    curr_or_prev = 2;
+                                end
+                            end
+                        end
+                    else % only next x is in same seg
+                        curr_or_prev = 0;
+                        replaced_curr_time = abs(x_next_time - curr_time - step_x1);
+                        replaced_prev_time = abs(x_next_time - prev_time - step_x1);
+                        if replaced_prev_time < replaced_curr_time
+                            if replaced_prev_time < step_x1*0.3 
+                                curr_or_prev = 2;
+                            end
+                        else
+                            if replaced_curr_time < step_x1*0.3 
+                                curr_or_prev = 1;
+                            end
+                        end
+                    end
+                elseif find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                    % only prev x is in same seg
+                    curr_or_prev = 0;
+                    replaced_curr_time = abs(curr_time - x_prev_time - step_x1);
+                    replaced_prev_time = abs(prev_time - x_prev_time - step_x1);
+                    if replaced_prev_time < replaced_curr_time
+                        if replaced_prev_time < step_x1*0.3 
+                            curr_or_prev = 2;
+                        end
+                    else
+                        if replaced_curr_time < step_x1*0.3 
+                            curr_or_prev = 1;
+                        end
+                    end
+                end
+                if curr_or_prev == 0 % remove impact
+                    next_o_time = detected_starts(o_idx(i+1))/Fs_pcb;
+                    prev_o_time = detected_starts(o_idx(i-2))/Fs_pcb;
+                    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > next_o_time,1) % in same segment
+                        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_o_time,1) % in same segment
+                            curr_o_margin = abs(next_o_time - curr_time - step_o1) + abs(curr_time - prev_o_time - step_o1);
+                            prev_o_margin = abs(next_o_time - prev_time - step_o1) + abs(prev_time - prev_o_time - step_o1);
+                            
+                        else
+                            curr_o_margin = abs(next_o_time - curr_time - step_o1);
+                            prev_o_margin = abs(next_o_time - prev_time - step_o1);
+                        end
+                    elseif find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_o_time,1) % in same segment
+                        curr_o_margin = abs(curr_time - prev_o_time - step_o1);
+                        prev_o_margin = abs(prev_time - prev_o_time - step_o1);
+                    end
+                    if curr_o_margin > prev_o_margin % delete current impact
+                        detected_starts(o_idx(i)) = [];
+                        Y_predict(o_idx(i)) = [];
+                    else % delete prev impact
+                        detected_starts(o_idx(i-1)) = [];
+                        Y_predict(o_idx(i-1)) = [];
+                    end
+                elseif curr_or_prev == 1 % replace current impact
+                    Y_predict(o_idx(i)) = 2;
+                else % replace previous impact
+                    Y_predict(o_idx(i-1)) = 2;
+                end
+                o_idx = find(Y_predict == 1);
+                x_idx = find(Y_predict == 2);
+                break;
+            end
+        end
+    end
+end
+
+% delete any small steps for x
+small_scaler = 0.4;
+% first fix any big steps
+o_idx = find(Y_predict == 1);
+x_idx = find(Y_predict == 2);
+x_wrong = false;
+for i = 2:length(x_idx)
+    curr_time = detected_starts(x_idx(i))/Fs_pcb;
+    prev_time = detected_starts(x_idx(i-1))/Fs_pcb;
+    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+        if curr_time - prev_time < small_scaler*step_x1
+            x_wrong = true;
+            % decide if remove or relabel for both impacts
+            o_prev = find(detected_starts(o_idx) <= curr_time*Fs_pcb);
+            if ~isempty(o_prev)
+                o_prev = o_prev(end);
+                o_prev_time = detected_starts(o_idx(o_prev))/Fs_pcb;
+            else
+                o_prev_time = detected_starts(end)/Fs_pcb + 1;
+            end
+            o_next = find(detected_starts(o_idx) > curr_time*Fs_pcb);
+            o_next = o_next(1);
+            o_next_time = detected_starts(o_idx(o_next))/Fs_pcb;
+
+            % check that prev and next x are in same seg
+            if find(detected_seg_starts > o_next_time,1) == find(detected_seg_starts > curr_time,1) % in same segment
+                if find(detected_seg_starts > o_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                    curr_or_prev = 0;
+                    curr_margin = abs(o_next_time - curr_time - step_o1) + abs(curr_time - o_prev_time - step_o1);
+                    prev_margin = abs(o_next_time - prev_time - step_o1) + abs(prev_time - o_prev_time - step_o1);
+                    % check if better to replace
+                    if abs(o_next_time - o_prev_time - step_o1) > abs(o_next_time - curr_time - step_o1)
+                        if abs(o_next_time - o_prev_time - step_o1) > abs(curr_time - o_prev_time - step_o1)
+                            curr_or_prev = 1;
+                        end
+                    end
+                    if abs(o_next_time - o_prev_time - step_o1) > abs(o_next_time - prev_time - step_o1)
+                        if abs(o_next_time - o_prev_time - step_o1) > abs(prev_time - o_prev_time - step_o1)
+                            if curr_or_prev == 1 & prev_margin < curr_margin
+                                curr_or_prev = 2;
+                            elseif curr_or_prev == 0
+                                curr_or_prev = 2;
+                            end
+                        end
+                    end
+                else % only next x is in same seg
+                    curr_or_prev = 0;
+                    replaced_curr_time = abs(o_next_time - curr_time - step_o1);
+                    replaced_prev_time = abs(o_next_time - prev_time - step_o1);
+                    if replaced_prev_time < replaced_curr_time
+                        if replaced_prev_time < step_o1*0.3 
+                            curr_or_prev = 2;
+                        end
+                    else
+                        if replaced_curr_time < step_o1*0.3 
+                            curr_or_prev = 1;
+                        end
+                    end
+                end
+            elseif find(detected_seg_starts > o_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                % only prev x is in same seg
+                curr_or_prev = 0;
+                replaced_curr_time = abs(curr_time - o_prev_time - step_o1);
+                replaced_prev_time = abs(prev_time - o_prev_time - step_o1);
+                if replaced_prev_time < replaced_curr_time
+                    if replaced_prev_time < step_o1*0.3 
+                        curr_or_prev = 2;
+                    end
+                else
+                    if replaced_curr_time < step_o1*0.3 
+                        curr_or_prev = 1;
+                    end
+                end
+            end
+            curr_or_prev
+            curr_time
+            if curr_or_prev == 0 % remove impact
+                next_x_time = detected_starts(x_idx(i+1))/Fs_pcb;
+                prev_x_time = detected_starts(x_idx(i-2))/Fs_pcb;
+                if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > next_x_time,1) % in same segment
+                    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_x_time,1) % in same segment
+                        curr_x_margin = abs(next_x_time - curr_time - step_x1) + abs(curr_time - prev_x_time - step_x1);
+                        prev_x_margin = abs(next_x_time - prev_time - step_x1) + abs(prev_time - prev_x_time - step_x1);
+
+                    else
+                        curr_x_margin = abs(next_x_time - curr_time - step_x1);
+                        prev_x_margin = abs(next_x_time - prev_time - step_x1);
+                    end
+                elseif find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_x_time,1) % in same segment
+                    curr_x_margin = abs(curr_time - prev_x_time - step_x1);
+                    prev_x_margin = abs(prev_time - prev_x_time - step_x1);
+                end
+                if curr_x_margin > prev_x_margin % delete current impact
+                    detected_starts(x_idx(i)) = [];
+                    Y_predict(x_idx(i)) = [];
+                else % delete prev impact
+                    detected_starts(x_idx(i-1)) = [];
+                    Y_predict(x_idx(i-1)) = [];
+                end
+            elseif curr_or_prev == 1 % replace current impact
+                Y_predict(x_idx(i)) = 1;
+            else % replace previous impact
+                Y_predict(x_idx(i-1)) = 1;
+            end
+            o_idx = find(Y_predict == 1);
+            x_idx = find(Y_predict == 2);
+            break;
+        end
+    end
+end
+while x_wrong
+    x_wrong = false;
+    for i = 2:length(x_idx)
+        curr_time = detected_starts(x_idx(i))/Fs_pcb;
+        prev_time = detected_starts(x_idx(i-1))/Fs_pcb;
+        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
+            if curr_time - prev_time < small_scaler*step_x1
+                x_wrong = true;
+                % decide if remove or relabel for both impacts
+                o_prev = find(detected_starts(o_idx) <= curr_time*Fs_pcb);
+                o_prev = o_prev(end);
+                o_prev_time = detected_starts(o_idx(o_prev))/Fs_pcb;
+                o_next = find(detected_starts(o_idx) > curr_time*Fs_pcb);
+                o_next = o_next(1);
+                o_next_time = detected_starts(o_idx(o_next))/Fs_pcb;
+
+                % check that prev and next x are in same seg
+                if find(detected_seg_starts > o_next_time,1) == find(detected_seg_starts > curr_time,1) % in same segment
+                    if find(detected_seg_starts > o_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                        curr_or_prev = 0;
+                        curr_margin = abs(o_next_time - curr_time - step_o1) + abs(curr_time - o_prev_time - step_o1);
+                        prev_margin = abs(o_next_time - prev_time - step_o1) + abs(prev_time - o_prev_time - step_o1);
+                        % check if better to replace
+                        if abs(o_next_time - o_prev_time - step_o1) > abs(o_next_time - curr_time - step_o1)
+                            if abs(o_next_time - o_prev_time - step_o1) > abs(curr_time - o_prev_time - step_o1)
+                                curr_or_prev = 1;
+                            end
+                        end
+                        if abs(o_next_time - o_prev_time - step_o1) > abs(o_next_time - prev_time - step_o1)
+                            if abs(o_next_time - o_prev_time - step_o1) > abs(prev_time - o_prev_time - step_o1)
+                                if curr_or_prev == 1 & prev_margin < curr_margin
+                                    curr_or_prev = 2;
+                                elseif curr_or_prev == 0
+                                    curr_or_prev = 2;
+                                end
+                            end
+                        end
+                    else % only next x is in same seg
+                        curr_or_prev = 0;
+                        replaced_curr_time = abs(o_next_time - curr_time - step_o1);
+                        replaced_prev_time = abs(o_next_time - prev_time - step_o1);
+                        if replaced_prev_time < replaced_curr_time
+                            if replaced_prev_time < step_o1*0.3 
+                                curr_or_prev = 2;
+                            end
+                        else
+                            if replaced_curr_time < step_o1*0.3 
+                                curr_or_prev = 1;
+                            end
+                        end
+                    end
+                elseif find(detected_seg_starts > o_prev_time,1) == find(detected_seg_starts > curr_time,1)
+                    % only prev x is in same seg
+                    curr_or_prev = 0;
+                    replaced_curr_time = abs(curr_time - o_prev_time - step_o1);
+                    replaced_prev_time = abs(prev_time - o_prev_time - step_o1);
+                    if replaced_prev_time < replaced_curr_time
+                        if replaced_prev_time < step_o1*0.3 
+                            curr_or_prev = 2;
+                        end
+                    else
+                        if replaced_curr_time < step_o1*0.3 
+                            curr_or_prev = 1;
+                        end
+                    end
+                end
+                curr_or_prev
+                curr_time
+                if curr_or_prev == 0 % remove impact
+                    next_x_time = detected_starts(x_idx(i+1))/Fs_pcb;
+                    prev_x_time = detected_starts(x_idx(i-2))/Fs_pcb;
+                    if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > next_x_time,1) % in same segment
+                        if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_x_time,1) % in same segment
+                            curr_x_margin = abs(next_x_time - curr_time - step_x1) + abs(curr_time - prev_x_time - step_x1);
+                            prev_x_margin = abs(next_x_time - prev_time - step_x1) + abs(prev_time - prev_x_time - step_x1);
+
+                        else
+                            curr_x_margin = abs(next_x_time - curr_time - step_x1);
+                            prev_x_margin = abs(next_x_time - prev_time - step_x1);
+                        end
+                    elseif find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_x_time,1) % in same segment
+                        curr_x_margin = abs(curr_time - prev_x_time - step_x1);
+                        prev_x_margin = abs(prev_time - prev_x_time - step_x1);
+                    end
+                    if curr_x_margin > prev_x_margin % delete current impact
+                        detected_starts(x_idx(i)) = [];
+                        Y_predict(x_idx(i)) = [];
+                    else % delete prev impact
+                        detected_starts(x_idx(i-1)) = [];
+                        Y_predict(x_idx(i-1)) = [];
+                    end
+                elseif curr_or_prev == 1 % replace current impact
+                    Y_predict(x_idx(i)) = 1;
+                else % replace previous impact
+                    Y_predict(x_idx(i-1)) = 1;
+                end
+                o_idx = find(Y_predict == 1);
+                x_idx = find(Y_predict == 2);
+                break;
+            end
+        end
+    end
+end
+
+% finally, check edges of segments to see if any can be overlapping
 
 
 

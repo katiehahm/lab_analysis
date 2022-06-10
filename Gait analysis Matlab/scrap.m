@@ -1,3 +1,127 @@
+%% recursively iterate through to fix labeling using step time
+
+detected_seg_ends = []; % start times of segments
+for i = 2:length(detected_starts)
+    if (detected_starts(i) - detected_starts(i-1))/Fs_pcb > 1.5 
+        detected_seg_ends(end+1) = detected_starts(i-1)/Fs_pcb;
+    end
+end
+detected_seg_ends(end+1) = detected_starts(end)/Fs_pcb;
+
+overlap_wrong = true;
+o_idx = find(Y_predict == 1);
+x_idx = find(Y_predict == 2);
+while overlap_wrong
+    overlap_wrong = false;
+    for i = 1:length(Y_predict)
+        if ~isempty(find(round(detected_seg_starts.*Fs_pcb./10) == round(detected_starts(i)/10),1))
+            % it's the start of the segment
+            o_first_idx = find(detected_starts(o_idx) >= detected_starts(i),1);
+            o_first = detected_starts(o_idx(o_first_idx));
+            x_first_idx = find(detected_starts(x_idx) >= detected_starts(i),1);
+            x_first = detected_starts(x_idx(x_first_idx));
+            changed = false;
+            if o_first < x_first
+                % o happened first
+                o_last_idx = find(detected_starts(o_idx) <= x_first & detected_starts(o_idx) >= o_first);
+                % loop through all o's before x to see if overlapping x fit
+                for j = 1:length(o_last_idx)
+                    curr_idx = o_idx(o_last_idx(end-j + 1));
+                    o_last = detected_starts(curr_idx);
+                    if abs((x_first - o_last)/Fs_pcb - step_x1) < step_x1*0.36
+                        % better to make overlapping
+                        Y_predict = [Y_predict(1:curr_idx);2;Y_predict(curr_idx+1:end)];
+                        detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+                        overlap_wrong = true;
+                        changed = true;
+                        o_idx = find(Y_predict == 1);
+                        x_idx = find(Y_predict == 2);
+                        break;
+                    end
+                end
+            elseif o_first > x_first
+                % x happened first
+                x_last_idx = find(detected_starts(x_idx) <= o_first & detected_starts(x_idx) >= x_first);
+                % loop through all o's before x to see if overlapping x fit
+                for j = 1:length(x_last_idx)
+                    curr_idx = x_idx(x_last_idx(end-j + 1));
+                    x_last = detected_starts(curr_idx);
+                    if abs((o_first - x_last)/Fs_pcb - step_o1) < step_o1*0.36
+                        % better to make overlapping
+                        Y_predict = [Y_predict(1:curr_idx);1;Y_predict(curr_idx+1:end)];
+                        detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+                        overlap_wrong = true;
+                        changed = true;
+                        o_idx = find(Y_predict == 1);
+                        x_idx = find(Y_predict == 2);
+                        break;
+                    end
+                end
+            end
+            if changed
+                break;
+            end
+        end
+        % check for ends of segments
+        if ~isempty(find(round(detected_seg_ends.*Fs_pcb./10) == round(detected_starts(i)/10),1))
+            % it's the end of the segment
+            o_last_idx = find(detected_starts(o_idx) <= detected_starts(i));
+            o_last = detected_starts(o_idx(o_last_idx(end)));
+            x_last_idx = find(detected_starts(x_idx) <= detected_starts(i));
+            x_last = detected_starts(x_idx(x_last_idx(end)));
+            changed = false;
+            if o_last > x_last
+                % o happened last
+                o_last_idx = find(detected_starts(o_idx) >= x_last & detected_starts(o_idx) <= o_last);
+                % loop through all o's before x to see if overlapping x fit
+                for j = 1:length(o_last_idx)
+                    curr_idx = o_idx(o_last_idx(j));
+                    curr_last = detected_starts(curr_idx);
+                    if abs((curr_last - x_last)/Fs_pcb - step_x1) < step_x1*0.36
+                        % better to make overlapping
+                        Y_predict = [Y_predict(1:curr_idx);2;Y_predict(curr_idx+1:end)];
+                        detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+                        overlap_wrong = true;
+                        changed = true;
+                        o_idx = find(Y_predict == 1);
+                        x_idx = find(Y_predict == 2);
+                        break;
+                    end
+                end
+            elseif o_last < x_last
+                % x happened last
+                x_last_idx = find(detected_starts(x_idx) >= o_last & detected_starts(x_idx) <= x_last);
+                % loop through all o's before x to see if overlapping x fit
+                for j = 1:length(x_last_idx)
+                    curr_idx = x_idx(x_last_idx(j));
+                    curr_last = detected_starts(curr_idx);
+                    if abs((curr_last - o_last)/Fs_pcb - step_o1) < step_o1*0.36
+                        % better to make overlapping
+                        Y_predict = [Y_predict(1:curr_idx);1;Y_predict(curr_idx+1:end)];
+                        detected_starts = [detected_starts(1:curr_idx),detected_starts(curr_idx:end)];
+                        overlap_wrong = true;
+                        changed = true;
+                        o_idx = find(Y_predict == 1);
+                        x_idx = find(Y_predict == 2);
+                        break;
+                    end
+                end
+            end
+            if changed
+                break;
+            end
+        end
+    end
+end
+
+                
+                
+                
+            
+    
+
+
+
 %% use localization to check if proposed labels are correct 6/6/22
 
 % this uses workspace data from below sections
