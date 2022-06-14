@@ -1,4 +1,4 @@
-function [] = labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb, Fs_fsr, rate)
+function [] = labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb, rate)
 % 6/8/22
 % used to calculate success rate of labeling from detected impacts
 % used in decisionTree_footfall_classifier.m
@@ -6,11 +6,11 @@ function [] = labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb,
 detected_times = detected_starts./Fs_pcb;
 success_count = 0;
 for i = 1:length(impacts)
-    real_time = impacts(i,1)/Fs_fsr;
+    real_time = impacts(i,1);
     near_idx = find(abs(detected_times - real_time) < rate);
-    real_label = impacts(i,4);
+    real_label = impacts(i,2);
     if ~isempty(near_idx)
-        if real_label == 1 | real_label == 2
+        if floor(real_label/10) == 1
             for j = 1:length(near_idx)
                 if Y_predict(near_idx(j)) == 1
                     success_count = success_count + 1;

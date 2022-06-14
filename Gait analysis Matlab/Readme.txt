@@ -187,6 +187,16 @@ notrecursive_stepID_limp_whole.m (5/19/22)
 
 https://www.mathworks.com/matlabcentral/fileexchange/24462-wiener-filter-for-noise-reduction-and-speech-enhancement
 
+experiment4_processing1.m (6/10/22)
+	initial filtering to sync, extract impacts, ground truth data, eliminate walk edges, wiener filter
+experiment4_processing2.m (6/10/22)
+	uses cwt to get training data using ground truth
+experiment4_processing3.m (6/10/22)
+	uses cwt to get testing data, use decision tree to classify impacts, manually clean edges
+experiment4_processing4.m (6/10/22)
+	store success rate etc, perform GMM, create localization csv
+experiment4_processing5.m (6/10/22)
+	makes csv for python localization, TA estimation, kmeans
 
 Data
 ===============================================
