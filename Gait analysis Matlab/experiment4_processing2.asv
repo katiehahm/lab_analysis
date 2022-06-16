@@ -1,3 +1,7 @@
+close all
+clear all
+processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_regular2.mat';
+load(processedfilepa
 % make training set 6/10/22
 freq_lower = 100; % Hz; frequency limits for cwt
 freq_higher = 350;

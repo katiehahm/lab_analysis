@@ -1,10 +1,11 @@
-function [est_impacts] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb)
+function [est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb)
 % to find overlapping impacts and change labels
 % 6/13/22 used in experiment4_processing3.m
 
 overlap_wrong = true;
 o_idx = find(est_impacts(:,2) == 1);
 x_idx = find(est_impacts(:,2) == 2);
+iter = 0;
 while overlap_wrong
     overlap_wrong = false;
     for i = 1:length(est_impacts(:,2))
@@ -92,16 +93,18 @@ while overlap_wrong
                     if abs((curr_last - o_last)/Fs_pcb - step_o1) < step_o1*0.36
                         % better to make overlapping
                         new_array = [est_impacts(curr_idx,1),1,est_impacts(curr_idx,3:end)];
-                        est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end)];
+                        est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
                         overlap_wrong = true;
                         changed = true;
                         o_idx = find(est_impacts(:,2) == 1);
                         x_idx = find(est_impacts(:,2) == 2);
+                iter = iter + 1;
                         break;
                     end
                 end
             end
             if changed
+                iter = iter + 1;
                 break;
             end
         end

@@ -1,4 +1,4 @@
-function [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_curr,step_other,curr_person,other_person,Fs_pcb)
+function [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,curr_person,other_person,is_startBig,Fs_pcb)
 % 6/13/22
 % delete any small steps 
 
@@ -10,6 +10,23 @@ fixed = false;
 for i = 2:length(curr_idx)
     curr_time = est_impacts(curr_idx(i),1)/Fs_pcb;
     prev_time = est_impacts(curr_idx(i-1),1)/Fs_pcb;
+    if curr_person == 1
+        if mod(i,2) == 0
+            if is_startBig
+                step_curr = max(step_o1,step_o2);
+            else
+                step_curr = min(step_o1,step_o2);
+            end
+        else
+            if is_startBig
+                step_curr = min(step_o1,step_o2);
+            else
+                step_curr = max(step_o1,step_o2);
+            end
+        end
+    else
+        step_curr = step_x1;
+    end
     if find(detected_seg_starts > curr_time,1) == find(detected_seg_starts > prev_time,1) % in same segment
         if curr_time - prev_time < small_scaler*step_curr % found small step
             fixed = true;
@@ -34,6 +51,37 @@ for i = 2:length(curr_idx)
             else % next does not exist
                 x_next_time = 0;
             end
+            
+            % define step_other
+            if curr_person == 1
+                if x_next_time == 0 % next time doesn't exist
+                    if mod(other_idx(x_prev)+1,2) == 0
+                        if is_startBig
+                            
+            else
+                step_other = step_x1;
+            end
+            
+                    
+                
+            if curr_person == 2
+                if mod(i,2) == 0
+                    if is_startBig
+                        step_curr = max(step_o1,step_o2);
+                    else
+                        step_curr = min(step_o1,step_o2);
+                    end
+                else
+                    if is_startBig
+                        step_curr = min(step_o1,step_o2);
+                    else
+                        step_curr = max(step_o1,step_o2);
+                    end
+                end
+            else
+                step_curr = step_x1;
+            end
+            
             
             if x_prev_time == 0 % prev time doesn't exist
                 curr_margin = abs(x_next_time - curr_time - step_other);
@@ -93,57 +141,6 @@ for i = 2:length(curr_idx)
             end
                 
                 
-            % check that prev and next x are in same seg
-            
-%             if find(detected_seg_starts > x_next_time,1) == find(detected_seg_starts > curr_time,1) % if in same segment
-%                 if find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1) % if in same segment
-%                     curr_or_prev = 0;
-%                     curr_margin = abs(x_next_time - curr_time - step_other) + abs(curr_time - x_prev_time - step_other);
-%                     prev_margin = abs(x_next_time - prev_time - step_other) + abs(prev_time - x_prev_time - step_other);
-%                     % check if better to replace
-%                     if abs(x_next_time - x_prev_time - step_other) > abs(x_next_time - curr_time - step_other)
-%                         if abs(x_next_time - x_prev_time - step_other) > abs(curr_time - x_prev_time - step_other)
-%                             curr_or_prev = 1; % better to replace current impact
-%                         end
-%                     end
-%                     if abs(x_next_time - x_prev_time - step_other) > abs(x_next_time - prev_time - step_other)
-%                         if abs(x_next_time - x_prev_time - step_other) > abs(prev_time - x_prev_time - step_other)
-%                             if curr_or_prev == 1 & prev_margin < curr_margin
-%                                 curr_or_prev = 2; % better to replace previous impact
-%                             elseif curr_or_prev == 0
-%                                 curr_or_prev = 2;
-%                             end
-%                         end
-%                     end
-%                 else % only next x is in same seg
-%                     curr_or_prev = 0;
-%                     replaced_curr_time = abs(x_next_time - curr_time - step_other);
-%                     replaced_prev_time = abs(x_next_time - prev_time - step_other);
-%                     if replaced_prev_time < replaced_curr_time
-%                         if replaced_prev_time < step_other*0.3 
-%                             curr_or_prev = 2;
-%                         end
-%                     else
-%                         if replaced_curr_time < step_other*0.3 
-%                             curr_or_prev = 1;
-%                         end
-%                     end
-%                 end
-%             elseif find(detected_seg_starts > x_prev_time,1) == find(detected_seg_starts > curr_time,1)
-%                 % only prev x is in same seg
-%                 curr_or_prev = 0;
-%                 replaced_curr_time = abs(curr_time - x_prev_time - step_other);
-%                 replaced_prev_time = abs(prev_time - x_prev_time - step_other);
-%                 if replaced_prev_time < replaced_curr_time
-%                     if replaced_prev_time < step_other*0.3 
-%                         curr_or_prev = 2;
-%                     end
-%                 else
-%                     if replaced_curr_time < step_other*0.3 
-%                         curr_or_prev = 1;
-%                     end
-%                 end
-%             end
             % now edit est_impacts
             if curr_or_prev == 0 % remove impact
                 if i < length(curr_idx)

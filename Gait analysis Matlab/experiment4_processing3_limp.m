@@ -1,10 +1,10 @@
 %% use decision tree to classify impacts
 % load training data
-load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp2.mat')
+load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp1.mat')
 tree = fitctree(X_train,Y_train);
 
 % load testing data
-processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp1.mat';
+processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp2.mat';
 load(processedfilepath)
 
 % detect impact starts
@@ -227,12 +227,15 @@ est_impacts = [detected_starts.',Y_predict,est_arrive_idx_all,est_last_idx_all,e
         est_cwt_peak,est_cwt_energy,est_peak_mag,est_energy,est_overlapping];
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
+title('Just classifier')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
 save(processedfilepath,'est_impacts','-append')
 
 %% recursively iterate through to fix labeling using step time
+% this is where it starts getting different from _processing3.m
+% ######################################################################
 
 % find segment end times
 detected_seg_starts = [detected_starts(1)/Fs_pcb]; % start times of segments
@@ -252,21 +255,37 @@ end
 detected_seg_ends(end+1) = detected_starts(end)/Fs_pcb;
 
 % first fix any big steps
+old_est_impacts = est_impacts;
+
+is_startBig = false;
+startBig_est_impacts = est_impacts;
+startSmall_est_impacts = est_impacts;
 % big o steps
 fixed = true;
 while fixed
-%     [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,step_o1,1,Fs_pcb);
-    [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,max(step_o1,step_o2),1,Fs_pcb);
+    [startBig_est_impacts,fixed] = big_step_labeling_o_limp(startBig_est_impacts,detected_seg_starts,step_o1,step_o2,Fs_pcb,true);
 end
-
-% big x steps
 fixed = true;
 while fixed
-%     [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,step_o1,Fs_pcb);
-    [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,max(step_o1,step_o2),Fs_pcb);
+    [startSmall_est_impacts,fixed] = big_step_labeling_o_limp(startSmall_est_impacts,detected_seg_starts,step_o1,step_o2,Fs_pcb,false);
+end
+big_success_rate = labeling_success_rate(impacts, startBig_est_impacts(:,1), startBig_est_impacts(:,2), Fs_pcb, 0.05);
+small_success_rate = labeling_success_rate(impacts, startSmall_est_impacts(:,1), startSmall_est_impacts(:,2), Fs_pcb, 0.05);
+if big_success_rate > small_success_rate
+    is_startBig = true;
+    est_impacts = startBig_est_impacts;
+else
+    est_impacts = startSmall_est_impacts;
+end
+
+%% big x steps
+fixed = true;
+while fixed
+    [est_impacts,fixed] = big_step_labeling_x_limp(est_impacts,detected_seg_starts,step_x1,step_o1,step_o2,is_startBig,Fs_pcb);
 end
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
+title('After big step labeling')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
@@ -274,110 +293,100 @@ labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 % small steps for o
 fixed = true;
 while fixed
-%     [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_o1,step_x1,1,2,Fs_pcb);
-    [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,min(step_o1,step_o2),step_x1,1,2,Fs_pcb);
+    [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,1,2,is_startBig,Fs_pcb);
 end
 
 % small steps for x
 fixed = true;
 while fixed
-%     [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,step_o1,2,1,Fs_pcb);
-    [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,min(step_o1,step_o2),2,1,Fs_pcb);
+    [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,2,1,is_startBig,Fs_pcb);
 end
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
+title('After small step labeling')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
 %% finally, check edges of segments to see if any can be overlapping
 % [est_impacts,~] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb);
-[est_impacts,~] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,mean([step_o1,step_o2]),step_x1,Fs_pcb);
+[est_impacts,~] = overlapping_step_labeling_limp(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_o2,step_x1,is_startBig,Fs_pcb);
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
+title('After overlap labeling')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
-%% repeat until no more fixes need to be made
-
-count = 1;
-fixed = true;
-while fixed
-%     [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,step_o1,1,Fs_pcb);
-    [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,max(step_o1,step_o2),1,Fs_pcb);
-    if fixed == true
-        count = count + 1;
-    end
-end
-fixed = true;
-while fixed
-%     [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,step_o1,Fs_pcb);
-    [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,max(step_o1,step_o2),Fs_pcb);
-    if fixed == true
-        count = count + 1;
-    end
-end
-fixed = true;
-while fixed
-%     [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_o1,step_x1,1,2,Fs_pcb);
-    [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,min(step_o1,step_o2),step_x1,1,2,Fs_pcb);
-    if fixed == true
-        count = count + 1;
-    end
-end
-fixed = true;
-while fixed
-%     [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,step_o1,2,1,Fs_pcb);
-    [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,min(step_o1,step_o2),2,1,Fs_pcb);
-    if fixed == true
-        count = count + 1;
-    end
-end
-% [est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb);
-[est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,mean([step_o1,step_o2]),step_x1,Fs_pcb);
-
-while count ~= 1 | iter ~= 0
-    count = 1;
-    fixed = true;
-    while fixed
-%         [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,step_o1,1,Fs_pcb);
-        [est_impacts,fixed] = big_step_labeling_o(est_impacts,detected_seg_starts,max(step_o1,step_o2),1,Fs_pcb);
-        if fixed == true
-            count = count + 1;
-        end
-    end
-    fixed = true;
-    while fixed
-%         [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,step_o1,Fs_pcb);
-        [est_impacts,fixed] = big_step_labeling_x(est_impacts,detected_seg_starts,step_x1,max(step_o1,step_o2),Fs_pcb);
-        if fixed == true
-            count = count + 1;
-        end
-    end
-    fixed = true;
-    while fixed
-%         [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_o1,step_x1,1,2,Fs_pcb);
-        [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,min(step_o1,step_o2),step_x1,1,2,Fs_pcb);
-        if fixed == true
-            count = count + 1;
-        end
-    end
-    fixed = true;
-    while fixed
-%         [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,step_o1,2,1,Fs_pcb);
-        [est_impacts,fixed] = small_step_labeling(est_impacts,detected_seg_starts,step_x1,min(step_o1,step_o2),2,1,Fs_pcb);
-        if fixed == true
-            count = count + 1;
-        end
-    end
-%     [est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb);
-    [est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,mean([step_o1,step_o2]),step_x1,Fs_pcb);
-    count
-    iter
-end
-
-plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
-labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
-labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
+% %% repeat until no more fixes need to be made
+% 
+% count = 1;
+% fixed = true;
+% while fixed
+%     [est_impacts,fixed] = big_step_labeling_o_limp(startBig_est_impacts,detected_seg_starts,step_o1,step_o2,Fs_pcb,is_startBig);
+%     if fixed == true
+%         count = count + 1;
+%     end
+% end
+% fixed = true;
+% while fixed
+%     [est_impacts,fixed] = big_step_labeling_x_limp(est_impacts,detected_seg_starts,step_x1,step_o1,step_o2,is_startBig,Fs_pcb);
+%     if fixed == true
+%         count = count + 1;
+%     end
+% end
+% fixed = true;
+% while fixed
+%     [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,1,2,is_startBig,Fs_pcb);
+%     if fixed == true
+%         count = count + 1;
+%     end
+% end
+% fixed = true;
+% while fixed
+%     [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,2,1,is_startBig,Fs_pcb);
+%     if fixed == true
+%         count = count + 1;
+%     end
+% end
+% [est_impacts,iter] = overlapping_step_labeling_limp(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_o2,step_x1,is_startBig,Fs_pcb);
+% %%
+% while count ~= 1 | iter ~= 0
+%     count = 1;
+%     fixed = true;
+%     while fixed
+%         [est_impacts,fixed] = big_step_labeling_o_limp(startBig_est_impacts,detected_seg_starts,step_o1,step_o2,Fs_pcb,is_startBig);
+%         if fixed == true
+%             count = count + 1;
+%         end
+%     end
+%     fixed = true;
+%     while fixed
+%         [est_impacts,fixed] = big_step_labeling_x_limp(est_impacts,detected_seg_starts,step_x1,step_o1,step_o2,is_startBig,Fs_pcb);
+%         if fixed == true
+%             count = count + 1;
+%         end
+%     end
+%     fixed = true;
+%     while fixed
+%         [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,1,2,is_startBig,Fs_pcb);
+%         if fixed == true
+%             count = count + 1;
+%         end
+%     end
+%     fixed = true;
+%     while fixed
+%         [est_impacts,fixed] = small_step_labeling_limp(est_impacts,detected_seg_starts,step_o1,step_o2,step_x1,2,1,is_startBig,Fs_pcb);
+%         if fixed == true
+%             count = count + 1;
+%         end
+%     end
+%     [est_impacts,iter] = overlapping_step_labeling_limp(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_o2,step_x1,is_startBig,Fs_pcb);
+%     count
+%     iter
+% end
+% 
+% plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
+% labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
+% labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
 %% plots for manually removing for next section
 figure;
@@ -394,10 +403,10 @@ plot(impacts(real_o,1),real_o,'bo')
 hold on
 plot(impacts(real_x,1),real_x,'bx')
 
-%% manually label parts in start/end of segments to find ultimate success rate
+%% manually remove parts in start/end of segments to find ultimate success rate
 
-remove_est_idx = [15,139,144,162,163,164,204,243,244,245]; % red graph
-remove_real_idx = [139,141,142,164,165,166,248,249,250]; % blue graph
+remove_est_idx = [1,16,18,19,41,65,83,128,150,213,232,296,298,317,318]; % red graph
+remove_real_idx = [16,17,80,82,108,234,236,259,275,277,279,281,326,324]; % blue graph
 
 clean_est_impacts = est_impacts;
 clean_impacts = impacts;
@@ -419,10 +428,10 @@ plot(clean_est_impacts(est_x,1)./Fs_pcb,est_x,'rx')
 
 
 %% manually add missing impacts
-add_idx = [148,254];
-add_label = [1,1];
-replace_idx = [85,203];
-replace_label = [1,2];
+add_idx = [19,236];
+add_label = [1,2];
+replace_idx = [76,182,183,221];
+replace_label = [1,2,1,1];
 
 for i = 1:length(replace_idx)
     clean_est_impacts(replace_idx(i),2) = replace_label(i);
@@ -439,10 +448,10 @@ labeling_success_rate(clean_impacts, clean_est_impacts(:,1), clean_est_impacts(:
 labeling_success_rate(clean_impacts, clean_est_impacts(:,1), clean_est_impacts(:,2), Fs_pcb, 0.05)
 
 %% delete section
-est_seg_start = 25.4;
-est_seg_end = 30.7;
-seg_start = 25.4;
-seg_end = 30.8;
+est_seg_start = 90.9;
+est_seg_end = 97.4;
+seg_start = 91;
+seg_end = 97.5;
 delete_idx = find(clean_est_impacts(:,1)./Fs_pcb > est_seg_start & clean_est_impacts(:,1)./Fs_pcb < est_seg_end);
 clean_est_impacts(delete_idx,:) = [];
 delete_idx = find(clean_impacts(:,1) > seg_start & clean_impacts(:,1) < seg_end);

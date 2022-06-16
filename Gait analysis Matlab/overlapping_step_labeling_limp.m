@@ -1,7 +1,9 @@
-function [est_impacts,iter] = overlapping_step_labeling(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_x1,Fs_pcb)
+function [est_impacts,iter] = overlapping_step_labeling_limp(est_impacts,detected_seg_starts,detected_seg_ends,step_o1,step_o2,step_x1,is_startBig,Fs_pcb)
 % to find overlapping impacts and change labels
 % 6/13/22 used in experiment4_processing3.m
+% for limp 6/15/22
 
+overlap_thresh = 0.36;
 overlap_wrong = true;
 o_idx = find(est_impacts(:,2) == 1);
 x_idx = find(est_impacts(:,2) == 2);
@@ -23,7 +25,7 @@ while overlap_wrong
                 for j = 1:length(o_last_idx)
                     curr_idx = o_idx(o_last_idx(end-j + 1));
                     o_last = est_impacts(curr_idx,1);
-                    if abs((x_first - o_last)/Fs_pcb - step_x1) < step_x1*0.36
+                    if abs((x_first - o_last)/Fs_pcb - step_x1) < step_x1*overlap_thresh
                         % better to make overlapping
                         new_array = [est_impacts(curr_idx,1),2,est_impacts(curr_idx,3:end)];
                         est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
@@ -42,16 +44,34 @@ while overlap_wrong
                 for j = 1:length(x_last_idx)
                     curr_idx = x_idx(x_last_idx(end-j + 1));
                     x_last = est_impacts(curr_idx,1);
-                    if abs((o_first - x_last)/Fs_pcb - step_o1) < step_o1*0.36
-                        % better to make overlapping
-                        new_array = [est_impacts(curr_idx,1),1,est_impacts(curr_idx,3:end)];
-                        est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
-                        overlap_wrong = true;
-                        changed = true;
-                        o_idx = find(est_impacts(:,2) == 1);
-                        x_idx = find(est_impacts(:,2) == 2);
-                        iter = iter + 1;
-                        break;
+                    if is_startBig 
+                        step_o = min(step_o1,step_o2);
+                        if abs((o_first - x_last)/Fs_pcb - step_o) < step_o*overlap_thresh
+                            % better to make overlapping
+                            new_array = [est_impacts(curr_idx,1),1,est_impacts(curr_idx,3:end)];
+                            est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
+                            overlap_wrong = true;
+                            changed = true;
+                            o_idx = find(est_impacts(:,2) == 1);
+                            x_idx = find(est_impacts(:,2) == 2);
+                            iter = iter + 1;
+                            is_startBig = false;
+                            break;
+                        end
+                    else
+                        step_o = min(step_o1,step_o2);
+                        if abs((o_first - x_last)/Fs_pcb - step_o) < step_o*overlap_thresh
+                            % better to make overlapping
+                            new_array = [est_impacts(curr_idx,1),1,est_impacts(curr_idx,3:end)];
+                            est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
+                            overlap_wrong = true;
+                            changed = true;
+                            o_idx = find(est_impacts(:,2) == 1);
+                            x_idx = find(est_impacts(:,2) == 2);
+                            iter = iter + 1;
+                            is_startBig = true;
+                            break;
+                        end
                     end
                 end
             end
@@ -74,7 +94,7 @@ while overlap_wrong
                 for j = 1:length(o_last_idx)
                     curr_idx = o_idx(o_last_idx(j));
                     curr_last = est_impacts(curr_idx,1);
-                    if abs((curr_last - x_last)/Fs_pcb - step_x1) < step_x1*0.36
+                    if abs((curr_last - x_last)/Fs_pcb - step_x1) < step_x1*overlap_thresh
                         % better to make overlapping
                         new_array = [est_impacts(curr_idx,1),2,est_impacts(curr_idx,3:end)];
                         est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];
@@ -93,7 +113,20 @@ while overlap_wrong
                 for j = 1:length(x_last_idx)
                     curr_idx = x_idx(x_last_idx(j));
                     curr_last = est_impacts(curr_idx,1);
-                    if abs((curr_last - o_last)/Fs_pcb - step_o1) < step_o1*0.36
+                    if is_startBig
+                        if mod(o_idx(o_last_idx(end))+1,2) == 0
+                            step_o = max(step_o1,step_o2);
+                        else
+                            step_o = min(step_o1,step_o2);
+                        end
+                    else
+                        if mod(o_idx(o_last_idx(end))+1,2) == 0
+                            step_o = min(step_o1,step_o2);
+                        else
+                            step_o = max(step_o1,step_o2);
+                        end
+                    end
+                    if abs((curr_last - o_last)/Fs_pcb - step_o) < step_o*overlap_thresh
                         % better to make overlapping
                         new_array = [est_impacts(curr_idx,1),1,est_impacts(curr_idx,3:end)];
                         est_impacts = [est_impacts(1:curr_idx,:);new_array;est_impacts(curr_idx+1:end,:)];

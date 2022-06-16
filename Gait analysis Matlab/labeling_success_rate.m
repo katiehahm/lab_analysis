@@ -1,4 +1,4 @@
-function [] = labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb, rate)
+function [success_rate] = labeling_success_rate(impacts, detected_starts, Y_predict, Fs_pcb, rate)
 % 6/8/22
 % used to calculate success rate of labeling from detected impacts
 % used in decisionTree_footfall_classifier.m
@@ -25,4 +25,4 @@ for i = 1:length(impacts)
         end
     end
 end
-success_rate = success_count / length(impacts)
+success_rate = success_count / length(impacts);

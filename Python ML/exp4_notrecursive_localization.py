@@ -27,8 +27,8 @@ from sklearn.preprocessing import StandardScaler
 # data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular2_localization_p2_withta.csv',header=None)
 # savefile = "both_regular2_localization_p2_results.csv"
 
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/April 3/ProcessedData/ExcelData/alltakes_localization_p2_withta.csv',header=None)
-savefile = "alltakes_localization_p2_results.csv"
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/alltakes_localization_p1_withta.csv',header=None)
+savefile = "alltakes_localization_p1_results.csv"
 
 
 # data
@@ -43,15 +43,15 @@ print(sh)
 nrows = sh[0]
 ncols = sh[1]
 
-xData = dataM[:,4:27]
+xData = dataM[:,2:]
 print(xData.shape)
-yData = dataM[:,2]
+yData = dataM[:,0]
 # xData = xData[0,:,:]
 yData = yData.flatten()
 
 # normalization:
-# min_max_scaler = MinMaxScaler().fit(xData)
-# xData = min_max_scaler.transform(xData)
+min_max_scaler = MinMaxScaler().fit(xData)
+xData = min_max_scaler.transform(xData)
 
 # standardization:
 # scaler = StandardScaler().fit(xData)

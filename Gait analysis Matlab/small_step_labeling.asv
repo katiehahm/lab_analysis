@@ -58,22 +58,15 @@ for i = 2:length(curr_idx)
             elseif x_next_time == 0 % next time doesn't exist
                 curr_margin = abs(curr_time - x_prev_time - step_other);
                 prev_margin = abs(prev_time - x_prev_time - step_other);
-                if curr_margin < prev_margin
-                    if curr_margin < step_other*0.3 
-                        % better to replace current impact
-                        curr_or_prev = 1;
-                    else
-                        % better to remove impact
-                        curr_or_prev = 0;
-                    end
+                if curr_margin < keep_margin
+                    % better to replace current impact
+                    curr_or_prev = 1;
+                elseif prev_margin < keep_margin
+                    % better to replace prev impact
+                    curr_or_prev = 2;
                 else
-                    if prev_margin < step_other*0.3
-                        % better to replace prev impact
-                        curr_or_prev = 2;
-                    else
-                        % better to remove impact
-                        curr_or_prev = 0;
-                    end
+                    % better to remove impact
+                    curr_or_prev = 0;
                 end
             else
                 % both prev and next time exist

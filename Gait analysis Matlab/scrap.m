@@ -1,3 +1,27 @@
+%% python GMM
+
+for p = 1:2 % for each person
+    idx = find(clean_est_impacts(:,2) == p);
+    estimated_impact_times = clean_est_impacts(idx,1)./Fs_pcb;
+
+    % calculate all step times from impact times
+    step_times = [];
+    for x = 2:length(estimated_impact_times)
+        curr_diff = estimated_impact_times(x) - estimated_impact_times(x-1);
+        if curr_diff < 1.5 % not a turning point
+            step_times(end+1) = curr_diff;
+        end
+    end
+    
+    if p == 1
+        filename = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\both_limp2_p1_GMM.csv';
+        writematrix(step_times.',filename)
+    else
+        filename = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\both_limp2_p2_GMM.csv';
+        writematrix(step_times.',filename)
+    end
+end
+
 %%
 o_idx = find(est_impacts(:,2) == 1);
 x_idx = find(est_impacts(:,2) == 2);

@@ -23,8 +23,8 @@ from sklearn.preprocessing import StandardScaler
 # outputs a csv with predicted locations for every impact
 
 # read csv file
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/April 3/ProcessedData/ExcelData/both_regular2_ta_p2.csv',header=None)
-write_filename = "both_regular2_ta_p2_results.csv" # CHANGE ***********************************
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_weight2_ta_p2.csv',header=None)
+write_filename = "both_weight2_ta_p2_results.csv" # CHANGE ***********************************
 # data
 # data_labels = data.iloc[0]
 # take out the first row
@@ -43,8 +43,8 @@ yData = dataM[:,0]
 yData = yData.flatten()
 
 # normalization:
-# min_max_scaler = MinMaxScaler().fit(xData)
-# xData = min_max_scaler.transform(xData)
+min_max_scaler = MinMaxScaler().fit(xData)
+xData = min_max_scaler.transform(xData)
 
 # standardization:
 # scaler = StandardScaler().fit(xData)
@@ -94,6 +94,6 @@ plt.plot(yPredictAll,yTestAll,'o')
 plt.xlabel('Predicted Values [m]')
 plt.ylabel('Target Values [m]')
 plt.title('X coordinate Performance')
-plt.xlim([-4,4])
-plt.ylim([-4,4])
+plt.xlim([2,8])
+plt.ylim([2,8])
 plt.show()
