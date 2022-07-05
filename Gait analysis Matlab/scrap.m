@@ -1,3 +1,43 @@
+%% finding overlapping impact example for SFCWT
+
+startidx = 840321;
+lastidx = 917803;
+
+for i = 1:6
+    sensornum = i;
+
+    clip = wien_pcbD(startidx:lastidx,sensornum);
+    [wt,f] = cwt(clip,12800);
+    valid_f_idx = find(f < freq_higher & f > freq_lower);
+    cwt_freq = f(valid_f_idx);
+    cwt_mag = abs(wt(valid_f_idx,:));
+    sum_cwt = sum(cwt_mag,1);
+    sum_smooth_cwt = movmean(sum_cwt, 1000);
+    figure;
+    subplot(2,1,1)
+    plot(sum_smooth_cwt)
+    hold on
+    idx = find(impacts(:,1) > (startidx/12800) & impacts(:,1) < (lastidx/12800));
+    plot(impacts(idx,1)*12800 - startidx,0,'rx','MarkerSize',10)
+
+    subplot(2,1,2)
+    pcbclip = pcbData(startidx:lastidx,sensornum);
+    plot(pcbclip)
+    hold on
+    plot(impacts(idx,1)*12800 - startidx,0,'rx','MarkerSize',10)
+    title(['start ' , num2str(startidx/12800) , ' sensor ' , num2str(sensornum)])
+end
+
+
+%% testing GMM derivation with dummy data
+
+r1 = normrnd(3,1,[1,500]);
+r2 = normrnd(4,2,[1,500]);
+
+filename = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\GMM_testing.csv';
+writematrix([r1.';r2.'],filename)
+% 6/17/22: it works! yay!
+
 %% python GMM
 
 for p = 1:2 % for each person

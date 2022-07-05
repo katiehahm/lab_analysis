@@ -2,9 +2,9 @@
 
 clear all
 close all
-filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\';
+filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\';
 % ################# change ########################
-intervention = 'both_regular2'; % regular1 limp1 limp2 weight1 weight2 regular2
+intervention = 'both_weight2'; % regular1 limp1 limp2 weight1 weight2 regular2
 % #################################################
 
 % load 3 datasets
@@ -24,6 +24,7 @@ Fs_mocap = 240;
 allmocap = cat(3, mocapL1,mocapR1,mocapL2,mocapR2);
 
 [accData, accTime, fsrData, fsrTime] = clip_accelfsr_fromMocap2pp_ver2(fsrData, accData, trigger_signal, Fs_fsr, Fs_acc, Fs_trigger);
+datas(:,10) = []; % just for Praneeth 5 bc trigger is in row 9
 [pcbData, pcbTime] = clip_pcb_fromMocap(datas, times, sensorN);
 
 % check this is correct. These numbers should be nearly the same:
@@ -38,7 +39,7 @@ figure; plot(pcbTime, pcbData)
 
 %% cont.
 
-start_time = 11.2; % change ##
+start_time = 11; % change ##
 startidx_pcb = findTindex(start_time,pcbTime);
 startidx_fsr = findTindex(start_time,fsrTime);
 startidx_acc = findTindex(start_time,accTime);
@@ -58,7 +59,7 @@ accTime = accTime(startidx_acc:end);
 accData = accData(startidx_acc:end,:);
 
 
-last_time = 95.8 - start_time; % change ##
+last_time = 136 - start_time; % change ##
 lastidx_pcb = findTindex(last_time,pcbTime);
 lastidx_fsr = findTindex(last_time,fsrTime);
 lastidx_acc = findTindex(last_time,accTime);
@@ -122,13 +123,13 @@ impacts = findimpacts_fsr_accel2pp(fsrTime, mocapT, allmocap, fsrData,dist,min_t
 % then run above section again
 
 %% fix small errors in impacts 11/5/21
-heel_start_wrong = [1754,11094,13574,14544,15758]; % these need to be same length
-heel_start_right = [1827,11131,13704,14524,15795];
+heel_start_wrong = [20932,18375]; % these need to be same length
+heel_start_right = [20992,18505];
 
 heel_pk_wrong = []; % index, these need to be same length
 heel_pk_right = [];
 
-delete_pks = [4208]; % index of peaks to delete
+delete_pks = []; % index of peaks to delete
 
 impacts = manual_fix_fsr2pp(impacts,fsrData,heel_start_wrong,heel_start_right,heel_pk_wrong,heel_pk_right,delete_pks);
 impacts = sortrows(impacts,1);
@@ -146,15 +147,15 @@ offset = 0.25;
 %% saving data to matlab
 
 processedfilepath = [filepath,'ProcessedData\',intervention];
-save(processedfilepath,'filename','pcbTime','datas','pcbData', ...
+save(processedfilepath,'processedfilepath','pcbTime','datas','pcbData', ...
     'fsrTime','fsrData','impacts','Fs_pcb','Fs_fsr','Fs_acc','Fs_trigger', ...
     'acc_pks','acc_pk_idx','accTime','accData',...
     'mocapT','allmocap','coordinates','Fs_mocap','sensorN')
-disp(append("Saved as ", filename))
+disp(append("Saved as ", processedfilepath))
 close all
 
 %% find walk edges and segments
-
+% coordinates(:,1) = coordinates(:,1)./1000; % only for praneeth 5
 % eliminate impacts that are off the floor
 elim_idx = [];
 for i = 1:length(impacts)
@@ -234,7 +235,7 @@ step_x2 = mean(step_x2_diff)
 save(processedfilepath,'impactN','impacts','coordinates','acc_pk_idx','acc_pks',...
     'ID_labels','walk_edges','segments','step_o1','step_o2','step_x1','step_x2','-append')
 
-%% sanity check walk edges
+% sanity check walk edges
 
 for i = 1:4
     figure; plot(fsrData(:,i))

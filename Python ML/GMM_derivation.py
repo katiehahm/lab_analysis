@@ -15,7 +15,7 @@ from sklearn.mixture import GaussianMixture
 
 # 2/28/22 after 2nd com mtg, try derivation of GMM 
 
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/both_limp2_p2_GMM.csv',header=None)
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Praneeth 5/ProcessedData/both_weight2_p2_GMM.csv',header=None)
 data = data.apply(pd.to_numeric, errors='coerce')
 # convert from pandas dataframe to numpy array
 dataM = pd.DataFrame(data).to_numpy()

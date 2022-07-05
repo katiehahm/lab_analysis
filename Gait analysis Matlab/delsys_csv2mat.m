@@ -1,5 +1,7 @@
 % no need to edit csv file it handles headers
-filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Alex 4\fsr_both_regular2';
+% around 5/22
+% used to clean files from new delsys software
+filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\fsr_both_weight2';
 T = readtable(filepath, 'PreserveVariableNames',true);
 A = table2array(T);
 

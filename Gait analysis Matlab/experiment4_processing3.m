@@ -1,15 +1,17 @@
 %% use decision tree to classify impacts
+clear all
+close all
 % load training data
-load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_weight1.mat')
+load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\ProcessedData\both_limp1.mat')
 tree = fitctree(X_train,Y_train);
 
 % load testing data
-processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_weight2.mat';
+processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\ProcessedData\both_limp2.mat';
 load(processedfilepath)
 
 % detect impact starts
-pkprom = [0.0015,0.0015,0.0015,0.0015,0.0015,0.0015];
-pkheight = [0.006,0.016,0.0014,0.004,0.0127,0.009];
+pkprom = [0.0015,0.0015,0.0002,0.0015,0.0015,0.0015];
+pkheight = [0.006,0.016,0.0004,0.004,0.0127,0.009];
 freq_lower = 100; % Hz; frequency limits for cwt
 freq_higher = 350;
 arrival_window = 1500; % 5000/Fs_pcb width of window to find arrival time
@@ -128,7 +130,7 @@ plot(impacts(:,1),0,'rx')
 ylim([-0.5 1])
 
 %% extract features and classify
-
+close all
 detected_starts = final_pred(multiple_detect);
 est_impactN = length(detected_starts);
 est_arrive_idx_all = zeros(est_impactN,sensorN);
@@ -220,7 +222,7 @@ X_test = [est_width,est_cwt_peak,est_cwt_energy,est_peak_mag,est_energy];
 
 
 %% predict with tree, store everything in est_impacts
-
+close all
 Y_predict = predict(tree,X_test);
 
 est_impacts = [detected_starts.',Y_predict,est_arrive_idx_all,est_last_idx_all,est_width,...
@@ -228,6 +230,7 @@ est_impacts = [detected_starts.',Y_predict,est_arrive_idx_all,est_last_idx_all,e
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
 title('Initial DT classifier')
+disp('Classifier')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
@@ -269,6 +272,7 @@ end
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
 title('Big step labeling')
+disp('Big step')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
@@ -289,6 +293,7 @@ end
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
 title('Small step labeling')
+disp('Small step')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
@@ -298,6 +303,7 @@ labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
 plot_footfall_labels(est_impacts(:,2),impacts,est_impacts(:,1),Fs_pcb)
 title('Overlapping labeling')
+disp('Overlapping')
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.1)
 labeling_success_rate(impacts, est_impacts(:,1), est_impacts(:,2), Fs_pcb, 0.05)
 
@@ -400,8 +406,8 @@ plot(impacts(real_x,1),real_x,'bx')
 
 %% manually label parts in start/end of segments to find ultimate success rate
 
-remove_est_idx = [60,101,106,173,197,240]; % red graph
-remove_real_idx = [19,20]; % blue graph
+remove_est_idx = [18,58,60,78,117,158,175,190,192]; % red graph
+remove_real_idx = [60,194,196]; % blue graph
 
 clean_est_impacts = est_impacts;
 clean_impacts = impacts;
@@ -423,10 +429,10 @@ plot(clean_est_impacts(est_x,1)./Fs_pcb,est_x,'rx')
 
 
 %% manually add missing impacts
-add_idx = [];
-add_label = [];
-replace_idx = [145,146,226,227];
-replace_label = [2,1,1,2];
+add_idx = [38,39,75,162,163,164,165,166,167,177,204];
+add_label = [1,1,1,2,2,2,2,2,2,1,2];
+replace_idx = [];
+replace_label = [];
 
 for i = 1:length(replace_idx)
     clean_est_impacts(replace_idx(i),2) = replace_label(i);
@@ -443,10 +449,10 @@ labeling_success_rate(clean_impacts, clean_est_impacts(:,1), clean_est_impacts(:
 labeling_success_rate(clean_impacts, clean_est_impacts(:,1), clean_est_impacts(:,2), Fs_pcb, 0.05)
 
 %% delete section
-est_seg_start = 25.4;
-est_seg_end = 30.7;
-seg_start = 25.4;
-seg_end = 30.8;
+est_seg_start = 124;
+est_seg_end = 130;
+seg_start = 124;
+seg_end = 130;
 delete_idx = find(clean_est_impacts(:,1)./Fs_pcb > est_seg_start & clean_est_impacts(:,1)./Fs_pcb < est_seg_end);
 clean_est_impacts(delete_idx,:) = [];
 delete_idx = find(clean_impacts(:,1) > seg_start & clean_impacts(:,1) < seg_end);

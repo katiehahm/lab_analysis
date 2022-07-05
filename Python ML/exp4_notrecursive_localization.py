@@ -27,8 +27,8 @@ from sklearn.preprocessing import StandardScaler
 # data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/both_regular2_localization_p2_withta.csv',header=None)
 # savefile = "both_regular2_localization_p2_results.csv"
 
-data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Jenny 1/ProcessedData/ExcelData/alltakes_localization_p1_withta.csv',header=None)
-savefile = "alltakes_localization_p1_results.csv"
+data = pd.read_csv('C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/Praneeth 5/ProcessedData/ExcelData/alltakes_localization_p2_withta.csv',header=None)
+savefile = "alltakes_localization_p2_results.csv"
 
 
 # data

@@ -3,7 +3,7 @@
 %% getting rmse on GMM results
 
 takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
-exp_subject = 'Jenny 1';
+exp_subject = 'Praneeth 5';
 gmm_rmse = 0;
 for t = 1:length(takes)
     filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',exp_subject,'\ProcessedData\both_', char(takes(t)),'.mat'];
@@ -19,9 +19,8 @@ gmm_rmse = sqrt(gmm_rmse/(4*length(takes)))
 %% making a localization csv for all takes
 
 takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
-exp_subject = 'Jenny 1';
 newA = zeros(1,32);
-person = '1';
+person = '2';
 for t = 1:length(takes)
     filename = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',exp_subject,'\ProcessedData\ExcelData\both_', char(takes(t)),'_localization_p',person','_withta.csv'];
     T = readtable(filename);
@@ -33,7 +32,7 @@ newA(1,:) = []; % initialization
 filename = ['C:/Users/Katie/Dropbox (MIT)/Lab/Analysis/Experiment4/',exp_subject,'/ProcessedData/ExcelData/alltakes_localization_p',person','_withta.csv'];
 writematrix(newA,filename)
 
-% then run exp4_notrecursive_localization.py for each person data
+% then run exp4_notrecursive_localization.py for all takes
 
 %% make TA csv with overlapping impacts 5/26/22 using alltakes localization results
 
@@ -108,15 +107,14 @@ for t = 1:length(takes)
     [~,cent2] = kmeans(est_TA2,2);
     
     load(['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',exp_subject,'\ProcessedData\both_',char(takes(t))])
-    foot_labels = correct_coords(:,3);
-    p1f1_idx = find(foot_labels == 1);
-    p1f2_idx = find(foot_labels == 2);
-    p2f1_idx = find(foot_labels == 3);
-    p2f2_idx = find(foot_labels == 4);
-    real_p1f1 = mean(correct_ta(p1f1_idx));
-    real_p1f2 = mean(correct_ta(p1f2_idx));
-    real_p2f1 = mean(correct_ta(p2f1_idx));
-    real_p2f2 = mean(correct_ta(p2f2_idx));
+    p1f1_idx = find(clean_impacts(:,2) == 11);
+    p1f2_idx = find(clean_impacts(:,2) == 12);
+    p2f1_idx = find(clean_impacts(:,2) == 21);
+    p2f2_idx = find(clean_impacts(:,2) == 22);
+    real_p1f1 = mean(clean_impacts(p1f1_idx,5));
+    real_p1f2 = mean(clean_impacts(p1f2_idx,5));
+    real_p2f1 = mean(clean_impacts(p2f1_idx,5));
+    real_p2f2 = mean(clean_impacts(p2f2_idx,5));
     
     plot(min(cent1),min([real_p1f1,real_p1f2]),'ro')
     plot(max(cent1),max([real_p1f1,real_p1f2]),'bo')
@@ -149,24 +147,79 @@ for t = 1:length(takes)
     A1 = table2array(T1);
     real_TA1 = A1(2:end,2);
     overall_mean = overall_mean + mean(real_TA1);
-    mean(real_TA1)
     overall_std = overall_std + std(real_TA1);
-    std(real_TA1)
     
     filename2 = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',exp_subject,'\ProcessedData\ExcelData\both_', char(takes(t)),'_ta_p2_results.csv'];
     T2 = readtable(filename2);
     A2 = table2array(T2);
     real_TA2 = A2(2:end,2);
     overall_mean = overall_mean + mean(real_TA2);
-    mean(real_TA2)
     overall_std = overall_std + std(real_TA2);
-    std(real_TA2)
 end
 
-overall_mean/(2*length(takes)) % final mean
-overall_std/(2*length(takes)) % final mean
+avgmean = overall_mean/(2*length(takes)) % final mean
+avgstd = overall_std/(2*length(takes)) % final mean
 
+%% getting rmse on scaled GMM and original GMM results from estimated step times
 
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+gmm_scaled_rmse = 0;
+gmm_original_rmse = 0;
+gmm_derived = 0;
+for t = 1:length(takes)
+    processedfilepath = ['C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\April 3\ProcessedData\both_',char(takes(t)),'.mat'];
+    load(processedfilepath)
+    estimated_scaling_GMM_means = [0,0;0,0];
+    estimated_original_GMM_means = [0,0;0,0];
+    for p = 1:2 % for each person
+        idx = find(clean_est_impacts(:,2) == p);
+        estimated_impact_times = clean_est_impacts(idx,1)./Fs_pcb;
 
+        % calculate all step times from impact times
+        step_times = [];
+        for x = 2:length(estimated_impact_times)
+            curr_diff = estimated_impact_times(x) - estimated_impact_times(x-1);
+            if curr_diff < 1.5 % not a turning point
+                step_times(end+1) = curr_diff;
+            end
+        end
+        GM = fitgmdist(transpose(step_times),2,'RegularizationValue',0.000001);
+        proportion = GM.ComponentProportion;
+        mu = GM.mu;
+        [bigprop,~] = max(proportion);
+        if (1-bigprop) < abs(0.5-bigprop)
+            mean1 = mu(1) + (mu(2)-mu(1))*(1- (proportion(1))^2);
+            mean2 = mu(2) + (mu(1)-mu(2))*(1- (proportion(2))^2);
+        else
+            mean1 = mu(1) + (mu(2)-mu(1))*abs(0.5-proportion(1));
+            mean2 = mu(2) + (mu(1)-mu(2))*abs(0.5-proportion(2));
+        end
+        if p == 1
+            estimated_scaling_GMM_means(1,:) = [min(mean1,mean2),max(mean1,mean2)];
+            estimated_original_GMM_means(1,:) = [min(mu(1),mu(2)),max(mu(1),mu(2))];
+        else
+            estimated_scaling_GMM_means(2,:) = [min(mean1,mean2),max(mean1,mean2)];
+            estimated_original_GMM_means(2,:) = [min(mu(1),mu(2)),max(mu(1),mu(2))];
+        end
+    end
+    gmm_scaled_rmse = gmm_scaled_rmse + (estimated_scaling_GMM_means(1,1)-real_means(1,1))^2;
+    gmm_scaled_rmse = gmm_scaled_rmse + (estimated_scaling_GMM_means(1,2)-real_means(1,2))^2;
+    gmm_scaled_rmse = gmm_scaled_rmse + (estimated_scaling_GMM_means(2,1)-real_means(2,1))^2;
+    gmm_scaled_rmse = gmm_scaled_rmse + (estimated_scaling_GMM_means(2,2)-real_means(2,2))^2;
+    
+    gmm_original_rmse = gmm_original_rmse + (estimated_original_GMM_means(1,1)-real_means(1,1))^2;
+    gmm_original_rmse = gmm_original_rmse + (estimated_original_GMM_means(1,2)-real_means(1,2))^2;
+    gmm_original_rmse = gmm_original_rmse + (estimated_original_GMM_means(2,1)-real_means(2,1))^2;
+    gmm_original_rmse = gmm_original_rmse + (estimated_original_GMM_means(2,2)-real_means(2,2))^2;
+    
+    gmm_derived = gmm_derived + (estimated_scaled_means(1,1)-real_means(1,1))^2;
+    gmm_derived = gmm_derived + (estimated_scaled_means(1,2)-real_means(1,2))^2;
+    gmm_derived = gmm_derived + (estimated_scaled_means(2,1)-real_means(2,1))^2;
+    gmm_derived = gmm_derived + (estimated_scaled_means(2,2)-real_means(2,2))^2;
+end
+
+gmm_scaled_rmse = sqrt(gmm_scaled_rmse/(4*length(takes)))
+gmm_original_rmse = sqrt(gmm_original_rmse/(4*length(takes)))
+gmm_derived = sqrt(gmm_derived/(4*length(takes)))
 
 

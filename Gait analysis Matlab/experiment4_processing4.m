@@ -126,8 +126,9 @@ save(filename,'false_pos','false_neg','true_pos','rmse','big_false_pos','big_fal
 
 %% perform GMM on these estimated step times for one intervention
 
-processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp2.mat';
+processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\ProcessedData\both_weight2.mat';
 load(processedfilepath)
+processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\ProcessedData\both_weight2.mat';
 
 scaled_means = zeros(2,2);
 real_means = zeros(2,2);
@@ -212,39 +213,43 @@ real_means
 % then run python GMM_derivation.py
 
 %% from python GMM
-estimated_scaled_means = [0.5262,0.7829;0.5460,0.5983];
+estimated_scaled_means = [0.4926,0.5028;0.5948,0.6585];
 save(processedfilepath,'processedfilepath','estimated_scaled_means','scaled_means','real_means','real_stds','-append')
 
 %% make localization csv
 
-processedfilepath = 'C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_limp2.mat';
-load(processedfilepath)
-featureV_p1 = zeros(1,32);
-featureV_p2 = zeros(1,32);
-time_buffer = 0.05;
+takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
+exp_subject = 'Praneeth 5';
+for t = 1:length(takes)
+    processedfilepath = ['C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\',exp_subject,'\ProcessedData\both_', char(takes(t)),'.mat'];
+    load(processedfilepath)
+    featureV_p1 = zeros(1,32);
+    featureV_p2 = zeros(1,32);
+    time_buffer = 0.05;
 
-% identify the correct estimates
-for i = 1:length(clean_impacts(:,1))
-    real_time = clean_impacts(i,1);
-    real_label = clean_impacts(i,2);
-    real_label = floor(real_label/10);
-    est_idx = find(clean_est_impacts(:,1)./Fs_pcb > (real_time - time_buffer) & clean_est_impacts(:,1)./Fs_pcb < (real_time + time_buffer));
-    est_labels = clean_est_impacts(est_idx,2);
-    found_idx = find(est_labels == real_label);
-    if ~isempty(found_idx)
-        % found a correct estimate
-        new_array = [clean_impacts(i,3),clean_impacts(i,5),clean_est_impacts(est_idx(found_idx),15:44)];
-        if real_label == 1
-            featureV_p1 = [featureV_p1; new_array];
-        else
-            featureV_p2 = [featureV_p2; new_array];
+    % identify the correct estimates
+    for i = 1:length(clean_impacts(:,1))
+        real_time = clean_impacts(i,1);
+        real_label = clean_impacts(i,2);
+        real_label = floor(real_label/10);
+        est_idx = find(clean_est_impacts(:,1)./Fs_pcb > (real_time - time_buffer) & clean_est_impacts(:,1)./Fs_pcb < (real_time + time_buffer));
+        est_labels = clean_est_impacts(est_idx,2);
+        found_idx = find(est_labels == real_label);
+        if ~isempty(found_idx)
+            % found a correct estimate
+            new_array = [clean_impacts(i,3),clean_impacts(i,5),clean_est_impacts(est_idx(found_idx),15:44)];
+            if real_label == 1
+                featureV_p1 = [featureV_p1; new_array];
+            else
+                featureV_p2 = [featureV_p2; new_array];
+            end
         end
     end
+    featureV_p1(1,:) = [];
+    featureV_p2(1,:) = [];
+    
+    filename1 = [processedfilepath(1:end-4),'_localization_p1_withta.csv'];
+    filename2 = [processedfilepath(1:end-4),'_localization_p2_withta.csv'];
+    writematrix(featureV_p1,filename1)
+    writematrix(featureV_p2,filename2)
 end
-featureV_p1(1,:) = [];
-featureV_p2(1,:) = [];
-
-filename1 = [processedfilepath(1:end-4),'_localization_p1_withta.csv'];
-filename2 = [processedfilepath(1:end-4),'_localization_p2_withta.csv'];
-writematrix(featureV_p1,filename1)
-writematrix(featureV_p2,filename2)
