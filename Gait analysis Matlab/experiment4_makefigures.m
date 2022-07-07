@@ -251,6 +251,7 @@ b(4).FaceColor = [0.5 0.5 1];
 
 takes = {'regular1', 'limp1', 'limp2', 'weight1', 'weight2', 'regular2'};
 subj = {'Jenny 1','Uriel 2','April 3'};
+% subj = {'Uriel 2'};
 
 GMM = zeros(1,2); % [est, real]
 
