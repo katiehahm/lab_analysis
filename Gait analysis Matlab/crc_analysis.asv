@@ -193,19 +193,7 @@ figure; plot(mdl)
 
 mdl
 mdl.RMSE/mean(y)
-outlier = find(isoutlier(mdl.Residuals.Raw));
-figure;
-X_nooutlier = X;
-X_nooutlier(outlier) = [];
-Y_nooutlier = y;
-Y_nooutlier(outlier) = [];
-plot(X_nooutlier,Y_nooutlier,'rx')
-
-mdlr = fitlm(X_nooutlier,Y_nooutlier,'RobustOpts','on');
-anova(mdl,'summary')
-figure; plot(mdlr)
-mdlr
-mdlr.RMSE/mean(Y_nooutlier)
+outlier = find(isoutlier(mdlr.Residuals.Raw));
 
 %% finding the first peak of fp for each impact 3/19/22
 

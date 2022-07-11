@@ -1,3 +1,37 @@
+%% medtronic coding practice
+
+filepath = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Praneeth 5\fsr_both_weight2';
+T = readtable(filepath, 'PreserveVariableNames',true);
+A = table2array(T);
+
+vars = T.Properties.VariableNames;
+
+idx = find(strcmp(vars,'Var2'));
+% col = T(:,vars(idx));
+col = A(:,idx);
+clean_col = col(~isnan(col));
+
+[idx,C] = kmeans(clean_col,2);
+
+%%
+rarray = rand(1000,1);
+[idx,C] = kmeans(rarray,2);
+
+figure;
+hold on
+colors = {'r.','b.'};
+
+for i = 1:2
+    c = find(idx == i);
+    plot(rarray(c),1,colors{i})
+    hold on
+end
+
+%%
+load ionosphere
+Mdl = fitctree(X,Y);
+Ynew = predict(Mdl,mean(X));
+
 %% finding overlapping impact example for SFCWT
 
 startidx = 840321;
