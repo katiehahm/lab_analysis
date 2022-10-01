@@ -1,3 +1,97 @@
+%% TA kmeans results plot one to one
+
+%% use grf predicted results to show difference with kmeans 8/12/22
+
+close all
+data_root_katie = 'C:\Users\Katie\Dropbox (MIT)\Lab\Analysis\Experiment3\ProcessedData\';
+subj = '4';
+T = readtable([data_root_katie, 'ExcelData\grf_results_GBR_regularweightonly_subj',subj]);
+A = table2array(T);
+predict_grf = A(:,3);
+take = A(:,1);
+
+count = 1;
+
+% these are indeces
+N = length(nonzeros(take));
+N = round(N/4);
+
+regular1 = predict_grf(1:N);
+regular2 = predict_grf(N+1:N*2);
+weight1 = predict_grf(N*2+1:N*3);
+weight2 = predict_grf(N*3+1:N*4);
+
+[~,regular1_C] = kmeans(regular1,2)
+[~,regular2_C] = kmeans(regular2,2)
+[~,weight1_C] = kmeans(weight1,2)
+[~,weight2_C] = kmeans(weight2,2)
+
+%% finding real grf means (cont from above)
+
+idx1 = find(acc_pks(:,4) == 1);
+idx0 = find(acc_pks(:,4) == 0);
+
+mean(acc_pks(idx1,2))
+mean(acc_pks(idx0,2))
+
+%% storing mean TA manually cont from above 2 sections
+
+% min reg1,max reg1,min reg2,max reg2, min wgt1, max wgt1, min wgt2, max
+% wgt2, etc. for subj 1-4
+measured = [2.07,2.38,2.12,2.55,1.47,2.43,1.61,1.91,1.55,1.81,1.37,2.12,1.33,2.49,...
+    2.14,2.23,3.30,3.73,2.30,3.89,2.15,4.90,2.29,2.38,2.77,2.84,2.23,4.64];
+estimated = [2.24,2.52,2.21,2.55,1.85,2.28,1.62,1.94,1.64,2.10,1.60,2.15,1.58,2.18,...
+    2.47,3.31,3.09,4.26,2.57,4.08,2.62,4.70,2.70,3.15,2.70,3.08,2.87,3.8];
+
+figure;
+plot(estimated, measured,'b.','MarkerSize',12)
+hold on
+onetoone = linspace(1,5,4000);
+plot(onetoone,onetoone,'k--','LineWidth',0.1)
+xlim([1 5])
+ylim([1 5])
+xlabel('Estimated average PTA (g)')
+ylabel('Measured average PTA (g)')
+title('Measured vs estimated average PTA')
+
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 15)
+
+%% original vs derived GMM for medtronic plot 8/12/22
+
+real_m1 = [0.53,0.60,0.57,0.51,0.47,0.49];
+real_m2 = [0.54,0.71,0.72,0.52,0.49,0.51];
+orig_m1 = [0.53,0.59,0.57,0.51,0.48,0.50];
+orig_m2 = [0.59,0.72,0.72,0.51,0.52,0.60];
+derv_m1 = [0.53,0.58,0.57,0.51,0.48,0.49];
+derv_m2 = [0.53,0.71,0.71,0.51,0.49,0.50];
+
+figure;
+plot(orig_m1,real_m1,'bx','MarkerSize',12)
+hold on
+plot(orig_m2,real_m2,'bx','MarkerSize',12)
+one2one = linspace(0.45,0.75,1000);
+plot(one2one,one2one,'k--','LineWidth',0.1)
+title('Measured vs original GMM step times')
+xlabel('GMM Average Step Time (s)')
+ylabel('Measured Average Step Time (s)')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 15)
+
+
+figure;
+plot(real_m1,derv_m1,'bx','MarkerSize',12)
+hold on
+plot(real_m2,derv_m2,'bx','MarkerSize',12)
+one2one = linspace(0.45,0.75,1000);
+plot(one2one,one2one,'k--','LineWidth',0.1)
+title('Measured vs adapted GMM step times')
+xlabel('Adapted GMM Average Step Time (s)')
+ylabel('Measured Average Step Time (s)')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 15)
+
+
 %% example of raw signal for paper figure 12/21/21
 
 close all

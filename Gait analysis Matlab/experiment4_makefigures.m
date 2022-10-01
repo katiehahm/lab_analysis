@@ -1,3 +1,14 @@
+%% single person data 7/13/22
+load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Alex 4\alone_regular.mat')
+figure; plot(times,datas(:,1))
+xlim([54 60])
+ylim([-0.015 0.015])
+xlabel('Time (s)')
+ylabel('Volts (V)')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 16)
+
+
 %% change data in a figure without source code 7/8/22
 fig = gcf;
 a = get(gca,'Children');
@@ -26,8 +37,8 @@ set(gca, 'FontSize', 16)
 %% exponent pres, raw signal vs scalogram vs sum of scalogram mag
 
 load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_regular1.mat')
-starttime = 1;
-lasttime = 3;
+starttime = 1.25;
+lasttime = 3.25;
 
 % raw signal
 figure;
@@ -38,6 +49,37 @@ plot(pcbTime(pcbstarttime:pcblasttime)-starttime,pcbclip)
 xlabel('Time (s)')
 ylabel('Volts (V)')
 title('Raw accelerometer signal')
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 16)
+xlim([0 lasttime-starttime])
+
+% scalogram
+figure;
+cwt(pcbclip,Fs_pcb)
+set(gca, 'FontName', 'Times New Roman')
+set(gca, 'FontSize', 16)
+[wt,f] = cwt(pcbclip,Fs_pcb); % uses default Morse wavelet
+valid_f_idx = find(f < 350 & f > 100);
+cwt_freq = f(valid_f_idx);
+cwt_mag = abs(wt(valid_f_idx,:));
+sum_cwt = sum(cwt_mag,1);
+sum_smooth_cwt = movmean(sum_cwt, 800);
+
+%% exponent pres, edit to get wiener signal
+
+load('C:\Users\katie\Dropbox (MIT)\Lab\Analysis\Experiment4\Jenny 1\ProcessedData\both_regular1.mat')
+starttime = 1.25;
+lasttime = 3.25;
+
+% raw signal
+figure;
+pcbstarttime = starttime*Fs_pcb;
+pcblasttime = lasttime*Fs_pcb;
+pcbclip = wien_pcbD(pcbstarttime:pcblasttime,1);
+plot(pcbTime(pcbstarttime:pcblasttime)-starttime,pcbclip)
+xlabel('Time (s)')
+ylabel('Volts (V)')
+title('Wiener filter accelerometer signal')
 set(gca, 'FontName', 'Times New Roman')
 set(gca, 'FontSize', 16)
 xlim([0 lasttime-starttime])
